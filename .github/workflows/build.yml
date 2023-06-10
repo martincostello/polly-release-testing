@@ -30,10 +30,6 @@ jobs:
       matrix:
         os: [ windows-latest ]
         include:
-          - os: macos-latest
-            os_name: macos
-          - os: ubuntu-latest
-            os_name: linux
           - os: windows-latest
             os_name: windows
 
@@ -47,31 +43,11 @@ jobs:
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@3447fd6a9f9e57506b15f895c5b76d3b197dc7c2 # v3.2.0
 
-    - name: Setup NuGet cache
-      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
-        restore-keys: ${{ runner.os }}-nuget-
-
     - name: Build, Test and Package
       shell: pwsh
       run: ./build.ps1
       env:
         RUN_MUTATION_TESTS: ${{ matrix.os_name == 'linux' && 'true' || 'false' }}
-
-    - uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3.1.4
-      name: Upload coverage to Codecov
-      with:
-        files: ./artifacts/coverage-reports/Polly.Core.Tests/Cobertura.xml,./artifacts/coverage-reports/Polly.Specs/Cobertura.xml,./artifacts/coverage-reports/Polly.RateLimiting.Tests/Cobertura.xml,./artifacts/coverage-reports/Polly.Extensions.Tests/Cobertura.xml,
-        flags: ${{ matrix.os_name }}
-
-    - name: Upload Mutation Report
-      if: always() && matrix.os_name == 'linux'
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-      with:
-        name: mutation-report
-        path: StrykerOutput
 
     - name: Publish NuGet packages
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
@@ -165,23 +141,6 @@ jobs:
     - name: Install Sign CLI tool
       run: dotnet tool install --tool-path . sign --version 0.9.1-beta.23274.1
 
-    - name: Sign artifacts
-      shell: pwsh
-      run: >
-        ./sign code azure-key-vault
-        **/*.nupkg
-        --base-directory "${{ github.workspace }}/packages"
-        --file-list "${{ github.workspace }}/signing-config/filelist.txt"
-        --application-name "Polly"
-        --publisher-name "App vNext"
-        --description "Polly"
-        --description-url "https://github.com/App-vNext/Polly"
-        --azure-key-vault-certificate "${{ secrets.SIGN_CLI_CERT_NAME }}"
-        --azure-key-vault-client-id "${{ secrets.SIGN_CLI_APPLICATION_ID }}"
-        --azure-key-vault-client-secret "${{ secrets.SIGN_CLI_SECRET }}"
-        --azure-key-vault-tenant-id "${{ secrets.SIGN_CLI_TENANT_ID }}"
-        --azure-key-vault-url "${{ secrets.SIGN_CLI_VAULT_URI }}"
-
     - name: Upload signed packages
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       with:
@@ -225,60 +184,6 @@ jobs:
         ref: ccfaec53ee5c1b14f029cb8156e0653c530f8b65
         repository: vcsjones/AuthenticodeLint
 
-    - name: Validate signatures
-      shell: pwsh
-      run: |
-        $authlintSource = Join-Path "." "AuthenticodeLint"
-        $authLintProject = Join-Path $authlintSource "AuthenticodeLint" "AuthenticodeLint.csproj"
-        $artifacts = Join-Path $authlintSource "artifacts"
-        $authlint = Join-Path $artifacts "authlint.exe"
-
-        dotnet publish $authLintProject --configuration Release --output $artifacts --runtime win-x64 --self-contained false /p:NoWarn=CS8604
-
-        if ($LASTEXITCODE -ne 0) {
-          throw "Failed to publish AuthenticodeLint."
-        }
-
-        $packages = Get-ChildItem -Filter "*.nupkg" | ForEach-Object { $_.FullName }
-
-        if ($packages.Length -eq 0) {
-          throw "Failed to publish AuthenticodeLint."
-        }
-
-        $invalidPackages = 0
-        foreach ($package in $packages) {
-          $packageName = Split-Path $package -Leaf
-          $extractedNupkg = Join-Path "." "extracted" $packageName
-          Expand-Archive -Path $package -DestinationPath $extractedNupkg -Force
-
-          $dlls = Get-ChildItem -Path $extractedNupkg -Filter "*.dll" -Recurse | ForEach-Object { $_.FullName }
-
-          $invalidDlls = 0
-          foreach ($dll in $dlls) {
-            $authlintProcess = Start-Process -FilePath $authlint -ArgumentList @("-in", $dll, "-verbose") -PassThru
-            $authlintProcess.WaitForExit()
-
-            if ($authlintProcess.ExitCode -ne 0) {
-              Write-Output "::warning::$dll in NuGet package $package failed signature validation."
-              $invalidDlls++
-            } else {
-              Write-Output "$dll in NuGet package $package has a valid signature."
-            }
-          }
-
-          if ($invalidDlls -gt 0) {
-            $invalidPackages++
-          } else {
-            Write-Output "All $($dlls.Length) DLLs in NuGet package $package have valid signatures."
-          }
-        }
-        if ($invalidPackages -gt 0) {
-          Write-Output "::error::$invalidPackages NuGet package(s) failed signature validation."
-          throw "One or more NuGet packages failed signature validation."
-        } else {
-          Write-Output "All $($packages.Length) NuGet packages have valid signatures."
-        }
-
   publish-nuget:
     needs: validate-signed-packages
     runs-on: ubuntu-latest
@@ -291,6 +196,3 @@ jobs:
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@3447fd6a9f9e57506b15f895c5b76d3b197dc7c2 # v3.2.0
-
-    - name: Push signed NuGet packages to NuGet.org
-      run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_TOKEN }} --skip-duplicate --source https://api.nuget.org/v3/index.json
