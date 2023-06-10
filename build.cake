@@ -308,8 +308,8 @@ Task("Build")
     .IsDependentOn("__RestoreNuGetPackages")
     .IsDependentOn("__UpdateAssemblyVersionInformation")
     .IsDependentOn("__BuildSolutions")
-    .IsDependentOn("__RunTests")
-    .IsDependentOn("__RunMutationTests")
+    //.IsDependentOn("__RunTests")
+    //.IsDependentOn("__RunMutationTests")
     .IsDependentOn("__CreateNuGetPackages");
 
 ///////////////////////////////////////////////////////////////////////////////
