@@ -4,6 +4,10 @@
 
 <!-- next-release -->
 
+## 8.0.3
+
+* Fix token by [@martincostello](https://github.com/martincostello) in https://github.com/martincostello/polly-release-testing/pull/11
+
 ## 8.3.1
 
 * Add example for chaos engineering by [@martintmk](https://github.com/martintmk) in https://github.com/App-vNext/Polly/pull/1956
