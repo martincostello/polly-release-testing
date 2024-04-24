@@ -36,7 +36,12 @@ jobs:
           script: |
             const { repo, owner } = context.repo;
             const draft = true;
-            const version = process.env.VERSION;
+            let version = process.env.VERSION;
+
+            if (version.startsWith('v')) {
+              version = version.slice(1);
+            }
+
             const tag_name = version;
             const name = tag_name;
 
