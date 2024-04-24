@@ -1,0 +1,459 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+      <title>Resilience pipelines | Polly </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Resilience pipelines | Polly ">
+      
+      
+      <link rel="icon" href="../icon.png">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/martincostello/polly-release-testing/blob/main/docs/pipelines/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+  </head>
+
+  <script type="module" src="./../public/docfx.min.js"></script>
+
+  <script>
+    const theme = localStorage.getItem('theme') || 'auto'
+    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+  </script>
+
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../icon.png" alt="Polly">
+            Polly
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="resilience-pipelines">Resilience pipelines</h1>
+
+<p>The <code>ResiliencePipeline</code> allows executing arbitrary user-provided callbacks. It is a combination of one or more resilience strategies.</p>
+<h2 id="usage">Usage</h2>
+<p>The <code>ResiliencePipeline</code> allow executing various synchronous and asynchronous user-provided callbacks as seen in the examples below:</p>
+<!-- snippet: resilience-pipeline-usage -->
+<pre><code class="lang-cs">// Creating a new resilience pipeline
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddConcurrencyLimiter(100)
+    .Build();
+
+// Executing an asynchronous void callback
+await pipeline.ExecuteAsync(
+    async token =&gt; await MyMethodAsync(token),
+    cancellationToken);
+
+// Executing a synchronous void callback
+pipeline.Execute(() =&gt; MyMethod());
+
+// Executing an asynchronous callback that returns a value
+await pipeline.ExecuteAsync(
+    async token =&gt; await httpClient.GetAsync(endpoint, token),
+    cancellationToken);
+
+// Executing an asynchronous callback without allocating a lambda
+await pipeline.ExecuteAsync(
+    static async (state, token) =&gt; await state.httpClient.GetAsync(state.endpoint, token),
+    (httpClient, endpoint),  // State provided here
+    cancellationToken);
+
+// Executing an asynchronous callback and passing custom data
+
+// 1. Retrieve a context from the shared pool
+ResilienceContext context = ResilienceContextPool.Shared.Get(cancellationToken);
+
+// 2. Add custom data to the context
+context.Properties.Set(new ResiliencePropertyKey&lt;string&gt;(&quot;my-custom-data&quot;), &quot;my-custom-data&quot;);
+
+// 3. Execute the callback
+await pipeline.ExecuteAsync(static async context =&gt;
+{
+    // Retrieve custom data from the context
+    var customData = context.Properties.GetValue(
+        new ResiliencePropertyKey&lt;string&gt;(&quot;my-custom-data&quot;),
+        &quot;default-value&quot;);
+
+    Console.WriteLine(&quot;Custom Data: {0}&quot;, customData);
+
+    await MyMethodAsync(context.CancellationToken);
+},
+context);
+
+// 4. Optionally, return the context to the shared pool
+ResilienceContextPool.Shared.Return(context);
+</code></pre>
+<!-- endSnippet -->
+<p>The above samples demonstrate how to use the resilience pipeline within the same scope. Additionally, consider the following:</p>
+<ul>
+<li>Separate the resilience pipeline's definition from its usage. Inject pipelines into the code that will consume them. This <a href="https://github.com/App-vNext/Polly/wiki/Unit-testing-with-Polly---with-examples">facilitates various unit-testing scenarios</a>.</li>
+<li>If your application uses Polly in multiple locations, define all pipelines at startup using <a href="/docs/resilience-pipeline-registry.md"><code>ResiliencePipelineRegistry</code></a> or using the <code>AddResiliencePipeline</code> extension. This is a common approach in .NET Core applications. For example, you could create your own extension method on <code>IServiceCollection</code> to configure pipelines consumed elsewhere in your application.</li>
+</ul>
+<!-- snippet: resilience-pipeline-di-usage -->
+<pre><code class="lang-cs">public static void ConfigureMyPipelines(IServiceCollection services)
+{
+    services.AddResiliencePipeline(&quot;pipeline-A&quot;, builder =&gt; builder.AddConcurrencyLimiter(100));
+    services.AddResiliencePipeline(&quot;pipeline-B&quot;, builder =&gt; builder.AddRetry(new()));
+
+    // Later, resolve the pipeline by name using ResiliencePipelineProvider&lt;string&gt; or ResiliencePipelineRegistry&lt;string&gt;
+    var pipelineProvider = services.BuildServiceProvider().GetRequiredService&lt;ResiliencePipelineProvider&lt;string&gt;&gt;();
+    pipelineProvider.GetPipeline(&quot;pipeline-A&quot;).Execute(() =&gt; { });
+}
+</code></pre>
+<!-- endSnippet -->
+<h2 id="empty-resilience-pipeline">Empty resilience pipeline</h2>
+<p>The empty resilience pipeline is a special construct that lacks any resilience strategies. You can access it through the following ways:</p>
+<ul>
+<li><code>ResiliencePipeline.Empty</code></li>
+<li><code>ResiliencePipeline&lt;T&gt;.Empty</code></li>
+</ul>
+<p>This is particularly useful in test scenarios where implementing resilience strategies could slow down the test execution or over-complicate test setup.</p>
+<h2 id="retrieving-execution-results-with-outcomet">Retrieving execution results with <code>Outcome&lt;T&gt;</code></h2>
+<p>The <code>ResiliencePipeline</code> class provides the <code>ExecuteOutcomeAsync(...)</code> method, which is designed to never throw exceptions. Instead, it stores either the result or the exception within an <code>Outcome&lt;T&gt;</code> struct.</p>
+<!-- snippet: resilience-pipeline-outcome -->
+<pre><code class="lang-cs">// Acquire a ResilienceContext from the pool
+ResilienceContext context = ResilienceContextPool.Shared.Get();
+
+// Execute the pipeline and store the result in an Outcome&lt;bool&gt;
+Outcome&lt;bool&gt; outcome = await pipeline.ExecuteOutcomeAsync(
+    static async (context, state) =&gt;
+    {
+        Console.WriteLine(&quot;State: {0}&quot;, state);
+
+        try
+        {
+            await MyMethodAsync(context.CancellationToken);
+
+            // Use static utility methods from Outcome to easily create an Outcome&lt;T&gt; instance
+            return Outcome.FromResult(true);
+        }
+        catch (Exception e)
+        {
+            // Create an Outcome&lt;T&gt; instance that holds the exception
+            return Outcome.FromException&lt;bool&gt;(e);
+        }
+    },
+    context,
+    &quot;my-state&quot;);
+
+// Return the acquired ResilienceContext to the pool
+ResilienceContextPool.Shared.Return(context);
+
+// Evaluate the outcome
+if (outcome.Exception is not null)
+{
+    Console.WriteLine(&quot;Execution Failed: {0}&quot;, outcome.Exception.Message);
+}
+else
+{
+    Console.WriteLine(&quot;Execution Result: {0}&quot;, outcome.Result);
+}
+</code></pre>
+<!-- endSnippet -->
+<p>Use <code>ExecuteOutcomeAsync(...)</code> in high-performance scenarios where you wish to avoid re-throwing exceptions. Keep in mind that Polly's resilience strategies also make use of the <code>Outcome</code> struct to prevent unnecessary exception throwing.</p>
+<h3 id="context-vs-state">Context vs State</h3>
+<p>In the previous example the <code>ExecuteOutcomeAsync</code> was called with <code>&quot;my-state&quot;</code> state object. You might wonder what's the point of the <code>state</code>, or can't we just use the <code>context</code>?</p>
+<p>The <code>state</code> object was introduced to be able to pass a parameter to the user callback without using a <a href="https://stackoverflow.com/a/428624/1064169">closure</a>.</p>
+<ul>
+<li>It allows you to access any object of the <code>ExecuteOutcomeAsync</code>'s caller method without any extra memory allocation</li>
+<li>It also enables you to use static anonymous methods</li>
+</ul>
+<p>So, it is a performance optimization tool. Of course you can pass more complex object than just a simple string like <code>(instance: this, request)</code>.</p>
+<p>While the <code>state</code> object is accessible only inside the user callback, you can use the <code>context</code> in many places.
+For example in case of Retry the <code>context</code> is accessible:</p>
+<ul>
+<li>inside the <code>ShouldHandle</code> delegate;</li>
+<li>inside the <code>OnRetry</code> delegate;</li>
+<li>inside the <code>DelayGenerator</code> delegate;</li>
+<li>through the <code>Outcome</code> property.</li>
+</ul>
+<p>As a rule of thumb:</p>
+<ul>
+<li>Use the <code>state</code> object to pass a parameter to your decorated method;</li>
+<li>Use the <code>context</code> object to exchange information between delegates of an instance of <code>XYZOptions</code> or between invocation attempts (in the case of retry or hedging strategies).</li>
+</ul>
+<h2 id="diagrams">Diagrams</h2>
+<h3 id="sequence-diagram-for-a-pipeline-with-retry-and-timeout">Sequence diagram for a pipeline with retry and timeout</h3>
+<p>Let's create the following pipeline:</p>
+<ul>
+<li>the inner strategy is a timeout,</li>
+<li>the outer is a retry which is timeout-aware.</li>
+</ul>
+<!-- snippet: resilience-pipeline-diagram-retry-timeout -->
+<pre><code class="lang-cs">ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddRetry(new() { ShouldHandle = new PredicateBuilder().Handle&lt;TimeoutRejectedException&gt;() }) // outer
+    .AddTimeout(TimeSpan.FromSeconds(1)) // inner
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<p>Let's suppose that the first request takes too long but the second is fast enough.</p>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    actor C as Caller
+    participant P as Pipeline
+    participant R as Retry
+    participant T as Timeout
+    participant D as DecoratedUserCallback
+
+    C-&gt;&gt;P: Calls ExecuteAsync
+    P-&gt;&gt;R: Calls ExecuteCore
+    R-&gt;&gt;T: Calls ExecuteCore
+    Note over R, D: Initial attempt
+    Note over T: Wait start
+    activate T
+    T-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;long-running &lt;br/&gt;operation
+    Note over T: Wait end
+    deactivate T
+    T--&gt;&gt;T: Times out
+    T-&gt;&gt;D: Propagates cancellation
+    D--&gt;&gt;D: Cancellation of callback
+    D-&gt;&gt;T: Cancellation finished
+    deactivate D
+    T-&gt;&gt;R: Throws &lt;br/&gt;TimeoutRejectedException
+    R--&gt;&gt;R: Sleeps
+
+    Note over R, D: First retry attempt
+    R-&gt;&gt;T: Calls ExecuteCore
+    Note over T: Wait start
+    activate T
+    T-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;long-running &lt;br/&gt;operation
+    D-&gt;&gt;T: Returns result
+    deactivate D
+    deactivate T
+    Note over T: Wait end
+
+    T-&gt;&gt;R: Returns result
+    R-&gt;&gt;P: Returns result
+    P-&gt;&gt;C: Returns result
+</code></pre>
+<h3 id="sequence-diagram-for-a-pipeline-with-timeout-and-retry">Sequence diagram for a pipeline with timeout and retry</h3>
+<p>Let's create the following pipeline:</p>
+<ul>
+<li>the inner strategy is a retry,</li>
+<li>the outer is a timeout which is overarching all retry attempts.</li>
+</ul>
+<!-- snippet: resilience-pipeline-diagram-timeout-retry -->
+<pre><code class="lang-cs">ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddTimeout(TimeSpan.FromSeconds(10)) // outer
+    .AddRetry(new()) // inner
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<p>Let's suppose that the first and the second requests are failing. The third request is not awaited since the overarching timeout elapsed.</p>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    actor C as Caller
+    participant P as Pipeline
+    participant T as Timeout
+    participant R as Retry
+    participant D as DecoratedUserCallback
+
+    C-&gt;&gt;P: Calls ExecuteAsync
+    P-&gt;&gt;T: Calls ExecuteCore
+    Note over T: Wait start
+    activate T
+
+    T-&gt;&gt;R: Calls ExecuteCore
+    Note over R, D: Initial attempt
+    R-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+    D-&gt;&gt;R: Fails
+    deactivate D
+
+    R--&gt;&gt;R: Sleeps
+    Note over R, D: First retry attempt
+    R-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+    D-&gt;&gt;R: Fails
+    deactivate D
+
+    R--&gt;&gt;R: Sleeps
+    Note over R, D: Second retry attempt
+    R-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+
+    deactivate T
+    Note over T: Wait end
+    T--&gt;&gt;T: Times out
+    T-&gt;&gt;R: Propagates cancellation
+    R-&gt;&gt;D: Propagates cancellation
+    D--&gt;&gt;D: Cancellation of callback
+    D-&gt;&gt;T: Cancellation finished
+    deactivate D
+
+    T-&gt;&gt;P: Throws &lt;br/&gt;TimeoutRejectedException
+    P-&gt;&gt;C: Propagates exception
+</code></pre>
+<h3 id="sequence-diagram-for-a-pipeline-with-timeout-retry-and-timeout">Sequence diagram for a pipeline with timeout, retry and timeout</h3>
+<p>Let's create the following pipeline:</p>
+<ul>
+<li>the inner most strategy is a timeout (per attempt),</li>
+<li>the middle one is a retry which is timeout-aware,</li>
+<li>the outer most is a timeout which is overarching all retry attempts.</li>
+</ul>
+<!-- snippet: resilience-pipeline-diagram-timeout-retry-timeout -->
+<pre><code class="lang-cs">ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddTimeout(TimeSpan.FromSeconds(10)) // outer most
+    .AddRetry(new() { ShouldHandle = new PredicateBuilder().Handle&lt;TimeoutRejectedException&gt;() })
+    .AddTimeout(TimeSpan.FromSeconds(1)) // inner most
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<p>Let's suppose that the first request fails and the second takes too long. The third request is not awaited since the overarching timeout elapsed.</p>
+<pre><code class="lang-mermaid">sequenceDiagram
+    autonumber
+    actor C as Caller
+    participant P as Pipeline
+    participant TO as TimeoutOuter
+    participant R as Retry
+    participant TI as TimeoutInner
+    participant D as DecoratedUserCallback
+
+    C-&gt;&gt;P: Calls ExecuteAsync
+    P-&gt;&gt;TO: Calls ExecuteCore
+    Note over TO: Wait start
+    activate TO
+
+    TO-&gt;&gt;R: Calls ExecuteCore
+    Note over R, D: Initial attempt
+    R-&gt;&gt;TI: Calls ExecuteCore
+    Note over TI: Wait start
+    activate TI
+    TI-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+    D-&gt;&gt;TI: Fails
+    deactivate D
+    deactivate TI
+    Note over TI: Wait end
+    TI-&gt;&gt;R: Propagate failure
+
+    R--&gt;&gt;R: Sleeps
+    Note over R, D: First retry attempt
+    R-&gt;&gt;TI: Calls ExecuteCore
+    Note over TI: Wait start
+    activate TI
+    TI-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+    TI--&gt;&gt;TI: Times-out
+    deactivate TI
+    Note over TI: Wait end
+    TI-&gt;&gt;D: Propagates cancellation
+    D--&gt;&gt;D: Cancellation of callback
+    D-&gt;&gt;TI: Cancellation finished
+    deactivate D
+    TI-&gt;&gt;R: Throws &lt;br/&gt;TimeoutRejectedException
+
+    R-&gt;&gt;R: Sleeps
+     Note over R, D: Second retry attempt
+    R-&gt;&gt;TI: Calls ExecuteCore
+    Note over TI: Wait start
+    activate TI
+    TI-&gt;&gt;D: Invokes
+    activate D
+    D--&gt;&gt;D: Performs &lt;br/&gt;operation
+    TO--&gt;&gt;TO: Times-out
+    deactivate TO
+    Note over TO: Wait end
+    TO-&gt;&gt;R: Propagates cancellation
+    R-&gt;&gt;TI: Propagates cancellation
+    TI-&gt;&gt;D: Propagates cancellation
+    D--&gt;&gt;D: Cancellation of callback
+    D-&gt;&gt;TO: Cancellation finished
+    deactivate TI
+    deactivate D
+    TO-&gt;&gt;P: Throws &lt;br/&gt;TimeoutRejectedException
+    P-&gt;&gt;C: Propagates exception
+</code></pre>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/martincostello/polly-release-testing/blob/main/docs/pipelines/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

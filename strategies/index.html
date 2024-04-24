@@ -1,0 +1,331 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+      <title>Resilience strategies | Polly </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Resilience strategies | Polly ">
+      
+      
+      <link rel="icon" href="../icon.png">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/martincostello/polly-release-testing/blob/main/docs/strategies/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+  </head>
+
+  <script type="module" src="./../public/docfx.min.js"></script>
+
+  <script>
+    const theme = localStorage.getItem('theme') || 'auto'
+    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+  </script>
+
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../icon.png" alt="Polly">
+            Polly
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="resilience-strategies">Resilience strategies</h1>
+
+<p>Resilience strategies are essential components of Polly, designed to execute user-defined callbacks while adding an extra layer of resilience. These strategies can't be executed directly; they must be run through a <strong>resilience pipeline</strong>. Polly provides an API to construct resilience pipelines by incorporating one or more resilience strategies through the pipeline builders.</p>
+<p>Polly categorizes resilience strategies into two main groups:</p>
+<ul>
+<li><strong>Reactive</strong>: These strategies handle specific exceptions that are thrown, or results that are returned, by the callbacks executed through the strategy.</li>
+<li><strong>Proactive</strong>: Unlike reactive strategies, proactive strategies do not focus on handling errors by the callbacks might throw or return. They can make proactive decisions to cancel or reject the execution of callbacks (e.g., using a rate limiter or a timeout resilience strategy).</li>
+</ul>
+<h2 id="built-in-strategies">Built-in strategies</h2>
+<h3 id="reactive">Reactive</h3>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Premise</th>
+<th style="text-align: center;">AKA</th>
+<th>How does the strategy mitigate?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="retry.html">Retry</a></td>
+<td>Many faults are transient and may self-correct after a short delay.</td>
+<td style="text-align: center;"><em>Maybe it's just a blip</em></td>
+<td>Allows configuring automatic retries.</td>
+</tr>
+<tr>
+<td><a href="circuit-breaker.html">Circuit-breaker</a></td>
+<td>When a system is seriously struggling, failing fast is better than making users/callers wait.  <br><br>Protecting a faulting system from overload can help it recover.</td>
+<td style="text-align: center;"><em>Stop doing it if it hurts</em> <br><br><em>Give that system a break</em></td>
+<td>Breaks the circuit (blocks executions) for a period, when faults exceed some pre-configured threshold.</td>
+</tr>
+<tr>
+<td><a href="fallback.html">Fallback</a></td>
+<td>Things will still fail - plan what you will do when that happens.</td>
+<td style="text-align: center;"><em>Degrade gracefully</em></td>
+<td>Defines an alternative value to be returned (or action to be executed) on failure.</td>
+</tr>
+<tr>
+<td><a href="hedging.html">Hedging</a></td>
+<td>Things can be slow sometimes, plan what you will do when that happens.</td>
+<td style="text-align: center;"><em>Hedge your bets</em></td>
+<td>Executes parallel actions when things are slow and waits for the fastest one.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="proactive">Proactive</h3>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Premise</th>
+<th style="text-align: center;">AKA</th>
+<th>How does the strategy prevent?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="timeout.html">Timeout</a></td>
+<td>Beyond a certain wait, a success result is unlikely.</td>
+<td style="text-align: center;"><em>Don't wait forever</em></td>
+<td>Guarantees the caller won't have to wait beyond the timeout.</td>
+</tr>
+<tr>
+<td><a href="rate-limiter.html">Rate Limiter</a></td>
+<td>Limiting the rate a system handles requests is another way to control load. <br><br> This can apply to the way your system accepts incoming calls, and/or to the way you call downstream services.</td>
+<td style="text-align: center;"><em>Slow down a bit, will you?</em></td>
+<td>Constrains executions to not exceed a certain rate.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage</h2>
+<p>Extensions for adding resilience strategies to the builders are provided by each strategy. Depending on the type of strategy, these extensions may be available for both <code>ResiliencePipelineBuilder</code> and <code>ResiliencePipelineBuilder&lt;T&gt;</code> or just for the latter one. Adding multiple resilience strategies is supported.</p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th style="text-align: center;"><code>ResiliencePipelineBuilder</code></th>
+<th style="text-align: center;"><code>ResiliencePipelineBuilder&lt;T&gt;</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Circuit Breaker</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Fallback</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Hedging</td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Rate Limiter</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Retry</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td>Timeout</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+</tbody>
+</table>
+<p>Each resilience strategy provides:</p>
+<ul>
+<li>Extensions for the resilience strategy builders.</li>
+<li>Configuration options (e.g., <code>RetryStrategyOptions</code>) to specify the strategy's behavior.</li>
+</ul>
+<p>Here's an simple example:</p>
+<!-- snippet: resilience-strategy-sample -->
+<pre><code class="lang-cs">ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddTimeout(new TimeoutStrategyOptions
+    {
+        Timeout = TimeSpan.FromSeconds(5)
+    })
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<div class="NOTE">
+<h5>Note</h5>
+<p>The configuration options are automatically validated by Polly and come with sensible defaults. Therefore, you don't have to specify all the properties unless needed.</p>
+</div>
+<h2 id="fault-handling">Fault handling</h2>
+<p>Each reactive strategy provides access to the <code>ShouldHandle</code> predicate property. This property offers a mechanism to decide whether the resilience strategy should manage the fault or result returned after execution.</p>
+<p>Setting up the predicate can be accomplished in the following ways:</p>
+<ul>
+<li><strong>Manually setting the predicate</strong>: Directly configure the predicate. The advised approach involves using <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/operators/switch-expression">switch expressions</a> for maximum flexibility, and also allows the incorporation of asynchronous predicates.</li>
+<li><strong>Employing <code>PredicateBuilder</code></strong>: The <code>PredicateBuilder{&lt;TResult&gt;}</code> classes provide a more straight-forward method to configure the predicates, akin to predicate setups in earlier Polly versions.</li>
+</ul>
+<p>The examples below illustrate these:</p>
+<h3 id="predicates">Predicates</h3>
+<!-- snippet: should-handle-manual -->
+<pre><code class="lang-cs">var options = new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+{
+    // For greater flexibility, you can directly use the ShouldHandle delegate with switch expressions.
+    ShouldHandle = args =&gt; args.Outcome switch
+    {
+        { Exception: HttpRequestException } =&gt; PredicateResult.True(),
+        { Exception: TimeoutRejectedException } =&gt; PredicateResult.True(), // You can handle multiple exceptions
+        { Result: HttpResponseMessage response } when !response.IsSuccessStatusCode =&gt; PredicateResult.True(),
+        _ =&gt; PredicateResult.False()
+    }
+};
+</code></pre>
+<!-- endSnippet -->
+<p>Notes from the preceding example:</p>
+<ul>
+<li>Switch expressions are used to determine whether to retry or not.</li>
+<li><code>PredicateResult.True()</code> is a shorthand for <code>new ValueTask&lt;bool&gt;(true)</code>.</li>
+<li><code>ShouldHandle</code> predicates are asynchronous and use the type <code>Func&lt;Args&lt;TResult&gt;, ValueTask&lt;bool&gt;&gt;</code>.
+<ul>
+<li>The <code>Args&lt;TResult&gt;</code> acts as a placeholder, and each strategy defines its own arguments.</li>
+</ul>
+</li>
+<li>Multiple exceptions can be handled using switch expressions.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The <code>args</code> parameter of the <code>ShouldHandle</code> allows read-only access to strategy specific information.
+For example in case of retry you can access the <code>AttemptNumber</code>, as well as the <code>Outcome</code> and <code>Context</code>.</p>
+</div>
+<h3 id="asynchronous-predicates">Asynchronous predicates</h3>
+<p>You can also use asynchronous delegates for more advanced scenarios, such as retrying based on the response body:</p>
+<!-- snippet: should-handle-manual-async -->
+<pre><code class="lang-cs">var options = new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+{
+    ShouldHandle = async args =&gt;
+    {
+        if (args.Outcome.Exception is not null)
+        {
+            return args.Outcome.Exception switch
+            {
+                HttpRequestException =&gt; true,
+                TimeoutRejectedException =&gt; true,
+                _ =&gt; false
+            };
+        }
+
+        // Determine whether to retry asynchronously or not based on the result.
+        return await ShouldRetryAsync(args.Outcome.Result!, args.Context.CancellationToken);
+    }
+};
+</code></pre>
+<!-- endSnippet -->
+<h3 id="predicate-builder">Predicate builder</h3>
+<p><a class="xref" href="../api/Polly.PredicateBuilder.html">PredicateBuilder</a>, or <a class="xref" href="../api/Polly.PredicateBuilder-1.html">PredicateBuilder&lt;TResult&gt;</a>, is a utility class aimed at simplifying the configuration of predicates:</p>
+<!-- snippet: should-handle-predicate-builder -->
+<pre><code class="lang-cs">// Use PredicateBuilder&lt;HttpResponseMessage&gt; to simplify the setup of the ShouldHandle predicate.
+var options = new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+{
+    ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+        .HandleResult(response =&gt; !response.IsSuccessStatusCode) // Handle results
+        .Handle&lt;HttpRequestException&gt;() // Or handle exception
+        .Handle&lt;TimeoutRejectedException&gt;() // Chaining is supported
+};
+</code></pre>
+<!-- endSnippet -->
+<p>The preceding sample:</p>
+<ul>
+<li>Uses <code>HandleResult</code> to register a predicate that determines whether the result should be handled or not.</li>
+<li>Uses <code>Handle</code> to handle multiple exceptions types.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>When using <code>PredicateBuilder</code> instead of manually configuring the predicate, there is a minor performance impact. Each method call on <code>PredicateBuilder</code> registers a new predicate, which must be invoked when evaluating the outcome.</p>
+</div>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/martincostello/polly-release-testing/blob/main/docs/strategies/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

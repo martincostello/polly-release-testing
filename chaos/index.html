@@ -1,0 +1,478 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+      <title>Chaos engineering | Polly </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Chaos engineering | Polly ">
+      
+      
+      <link rel="icon" href="../icon.png">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/martincostello/polly-release-testing/blob/main/docs/chaos/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+  </head>
+
+  <script type="module" src="./../public/docfx.min.js"></script>
+
+  <script>
+    const theme = localStorage.getItem('theme') || 'auto'
+    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+  </script>
+
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../icon.png" alt="Polly">
+            Polly
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="chaos-engineering">Chaos engineering</h1>
+
+<p><strong>Chaos engineering</strong> is the discipline of experimenting on a system in order to build confidence in the system's capability to withstand turbulent conditions in production.</p>
+<p>If you want to learn more about chaos engineering:</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Chaos_engineering">Chaos engineering on Wikipedia</a>: Describes the basic concepts, history and tools related to chaos engineering.</li>
+<li><a href="https://www.gremlin.com/community/tutorials/chaos-engineering-the-history-principles-and-practice/">Chaos engineering, the history, principles and practices</a>: Excellent article about chaos engineering by <a href="https://www.gremlin.com/chaos-engineering/">Gremlin</a>, a chaos engineering platform.</li>
+<li><a href="https://learn.microsoft.com/azure/chaos-studio/chaos-studio-chaos-engineering-overview">Understanding chaos engineering and resilience</a>: Intro to chaos engineering in the context of <a href="https://learn.microsoft.com/en-us/azure/chaos-studio/chaos-studio-overview">Azure Chaos Studio</a>, managed service that uses chaos engineering to help you measure, understand, and improve your cloud application and service resilience.</li>
+</ul>
+<h2 id="chaos-engineering-with-simmy">Chaos engineering with Simmy</h2>
+<p><a href="https://github.com/Polly-Contrib/Simmy">Simmy</a> is a major new addition to Polly library, adding a chaos engineering and fault-injection dimension to Polly, through the provision of strategies to selectively inject faults, latency, custom behavior or fake results.</p>
+<p><img src="../media/simmy-logo.png" alt="Simmy"></p>
+<h2 id="usage">Usage</h2>
+<!-- snippet: chaos-usage -->
+<pre><code class="lang-cs">var builder = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;();
+
+// First, configure regular resilience strategies
+builder
+    .AddConcurrencyLimiter(10, 100)
+    .AddRetry(new RetryStrategyOptions&lt;HttpResponseMessage&gt; { /* configure options */ })
+    .AddCircuitBreaker(new CircuitBreakerStrategyOptions&lt;HttpResponseMessage&gt; { /* configure options */ })
+    .AddTimeout(TimeSpan.FromSeconds(5));
+
+// Finally, configure chaos strategies if you want to inject chaos.
+// These should come after the regular resilience strategies.
+
+// 2% of invocations will be injected with chaos
+const double InjectionRate = 0.02;
+
+builder
+    .AddChaosLatency(InjectionRate, TimeSpan.FromMinutes(1)) // Inject a chaos latency to executions
+    .AddChaosFault(InjectionRate, () =&gt; new InvalidOperationException(&quot;Injected by chaos strategy!&quot;)) // Inject a chaos fault to executions
+    .AddChaosOutcome(InjectionRate, () =&gt; new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)) // Inject a chaos outcome to executions
+    .AddChaosBehavior(0.001, cancellationToken =&gt; RestartRedisAsync(cancellationToken)); // Inject a chaos behavior to executions
+</code></pre>
+<!-- endSnippet -->
+<div class="NOTE">
+<h5>Note</h5>
+<p>It is usual to place the chaos strategy as the last strategy in the resilience pipeline. By placing the chaos strategies as last, they subvert the usual outbound call at the last minute, substituting their fault or adding extra latency, etc. The existing resilience strategies - further out in the <code>ResiliencePipeline</code> - still apply, so you can test how the Polly resilience strategies you have configured handle the chaos/faults injected by Simmy.</p>
+</div>
+<h2 id="major-differences">Major differences</h2>
+<p>This section highlights the major differences compared to the <a href="https://github.com/Polly-Contrib/Simmy"><code>Polly.Contrib.Simmy</code></a> library:</p>
+<ul>
+<li><strong>From <code>MonkeyPolicy</code> to <code>ChaosStrategy</code></strong>: We've updated the terminology from <code>Monkey</code> to <code>Chaos</code> to better align with the well-recognized principles of <em>chaos engineering</em>.</li>
+<li><strong>Unified configuration options</strong>: The <code>InjectOptionsBase</code> and <code>InjectOptionsAsyncBase</code> are now consolidated into <code>ChaosStrategyOptions</code>. This change brings Simmy in line with the Polly v8 API, offering built-in support for options-based configuration and seamless integration of synchronous and asynchronous executions.</li>
+<li><strong>Chaos strategies enabled by default</strong>: Adding a chaos strategy (previously known as monkey policy) now means it's active right away. This is a departure from earlier versions, where the monkey policy had to be explicitly enabled.</li>
+<li><strong>API changes</strong>: The new version of Simmy introduces several API updates. While this list isn't complete, it includes key changes like renaming <code>Inject</code> to <code>AddChaos</code> and switching from <code>Result</code> to <code>Outcome</code>. Here are some specific renames:
+<ul>
+<li><code>InjectException</code> is now <code>AddChaosFault</code></li>
+<li><code>InjectResult</code> is now <code>AddChaosOutcome</code></li>
+<li><code>InjectBehavior</code> is now <code>AddChaosBehavior</code></li>
+<li><code>InjectLatency</code> is now <code>AddChaosLatency</code></li>
+</ul>
+</li>
+<li><strong>Sync and async unification</strong>: Before, Simmy had various methods to set policies like <code>InjectLatency</code>, <code>InjectLatencyAsync</code>, <code>InjectLatency&lt;T&gt;</code>, and <code>InjectLatencyAsync&lt;T&gt;</code>. With the new version based on Polly v8, these methods have been combined into a single <code>AddChaosLatency</code> extension that works for both <code>ResiliencePipelineBuilder</code> and <code>ResiliencePipelineBuilder&lt;T&gt;</code>. These rules are covering all types of chaos strategies (Outcome, Fault, Latency, and Behavior).</li>
+</ul>
+<h2 id="motivation">Motivation</h2>
+<p>There are a lot of questions when it comes to chaos engineering and making sure that a system is actually ready to face the worst possible scenarios:</p>
+<ul>
+<li>Is my system resilient enough?</li>
+<li>Am I handling the right exceptions/scenarios?</li>
+<li>How will my system behave if X happens?</li>
+<li>How can I test without waiting for a handled (or even unhandled) exception to happen in my production environment?</li>
+</ul>
+<p>Using Polly helps introduce resilience to a project, but we don't want to have to wait for expected or unexpected failures to test it out. A resilience could be wrongly implemented; testing the scenarios is not straightforward; and mocking failure of some dependencies (for example a cloud SaaS or PaaS service) is not always straightforward.</p>
+<h3 id="what-is-needed-to-simulate-chaotic-scenarios">What is needed to simulate chaotic scenarios?</h3>
+<ul>
+<li>A way to simulate failures of dependencies (any service dependency for example).</li>
+<li>Define when to fail based on some external factors - maybe global configuration or some rule.</li>
+<li>A way to revert easily, to control the blast radius.</li>
+<li>To be production grade, to run this in a production or near-production system with automation.</li>
+</ul>
+<h2 id="chaos-strategies">Chaos strategies</h2>
+<p>Chaos strategies (formerly known as Monkey strategies) are in essence a <a href="../strategies/index.html#built-in-strategies">Resilience strategy</a>, which means, as a <em>Resilience Strategy</em> is the minimum unit of resilience for Polly, a <em>Chaos Strategy</em> is the minimum unit of chaos for Simmy.</p>
+<h3 id="built-in-strategies">Built-in strategies</h3>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Reactive</th>
+<th>What does the strategy do?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="fault.html">Fault</a></td>
+<td>No</td>
+<td>Injects exceptions in your system.</td>
+</tr>
+<tr>
+<td><a href="outcome.html">Outcome</a></td>
+<td>Yes</td>
+<td>Injects fake outcomes (results or exceptions) in your system.</td>
+</tr>
+<tr>
+<td><a href="latency.html">Latency</a></td>
+<td>No</td>
+<td>Injects latency into executions before the calls are made.</td>
+</tr>
+<tr>
+<td><a href="behavior.html">Behavior</a></td>
+<td>No</td>
+<td>Allows you to inject <em>any</em> extra behavior, before a call is placed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="common-options-across-strategies">Common options across strategies</h2>
+<p>All the strategies' options implement the <a class="xref" href="../api/Polly.Simmy.ChaosStrategyOptions.html"><code>ChaosStrategyOptions</code></a> class as it contains the basic configuration for every chaos strategy.</p>
+<div class="IMPORTANT">
+<h5>Important</h5>
+<p>Please bear in mind that with the V8 API the chaos strategies are enabled by default. So, you can opt-out of them one-by-one either via the <code>Enabled</code> or via the <code>EnabledGenerator</code> property.</p>
+<p>In previous Simmy versions you had to explicitly call either the <code>Enabled</code> or the <code>EnabledWhen</code> method to opt-in a chaos policy.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Default Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InjectionRate</code></td>
+<td>0.001</td>
+<td>A decimal between 0 and 1 inclusive. The strategy will inject the chaos, randomly, that proportion of the time, e.g.: if 0.2, twenty percent of calls will be randomly affected; if 0.01, one percent of calls; if 1, all calls.</td>
+</tr>
+<tr>
+<td><code>InjectionRateGenerator</code></td>
+<td><code>null</code></td>
+<td>Generates the injection rate for a given execution, which the value should be between [0, 1] (inclusive).</td>
+</tr>
+<tr>
+<td><code>Enabled</code></td>
+<td><code>true</code></td>
+<td>Determines whether the strategy is enabled or not.</td>
+</tr>
+<tr>
+<td><code>EnabledGenerator</code></td>
+<td><code>null</code></td>
+<td>The generator that indicates whether the chaos strategy is enabled for a given execution.</td>
+</tr>
+</tbody>
+</table>
+<div class="NOTE">
+<h5>Note</h5>
+<p>If both <code>InjectionRate</code> and <code>InjectionRateGenerator</code> are specified then <code>InjectionRate</code> will be ignored.</p>
+<p>If both <code>Enabled</code> and <code>EnabledGenerator</code> are specified then <code>Enabled</code> will be ignored.</p>
+</div>
+<h2 id="telemetry">Telemetry</h2>
+<p>The telemetry of chaos strategies is seamlessly integrated with Polly <a href="../advanced/telemetry.html">telemetry infrastructure</a>. The chaos strategies produce the following events:</p>
+<ul>
+<li><code>Chaos.OnFault</code></li>
+<li><code>Chaos.OnOutcome</code></li>
+<li><code>Chaos.OnLatency</code></li>
+<li><code>Chaos.OnBehavior</code></li>
+</ul>
+<h2 id="patterns">Patterns</h2>
+<h3 id="inject-chaos-selectively">Inject chaos selectively</h3>
+<p>You aim to dynamically adjust the frequency and timing of chaos injection. For instance, in pre-production and test environments, it's sensible to consistently inject chaos. This proactive approach helps in preparing for potential failures. In production environments, however, you may prefer to limit chaos to certain users and tenants, ensuring that regular users remain unaffected. The chaos API offers the flexibility needed to manage these varying scenarios.</p>
+<p>Additionally, you have the option to dynamically alter the injection rate and simulate extreme scenarios by setting the injection rate to <em>1.0 (100%)</em>. Exercise caution when applying this high rate, restricting it to a subset of tenants and users to avoid rendering the system unusable for regular users.</p>
+<p>The following example illustrates how to configure chaos strategies accordingly:</p>
+<!-- snippet: chaos-selective -->
+<pre><code class="lang-cs">services.AddResiliencePipeline(&quot;chaos-pipeline&quot;, (builder, context) =&gt;
+{
+    var environment = context.ServiceProvider.GetRequiredService&lt;IHostEnvironment&gt;();
+
+    builder.AddChaosFault(new ChaosFaultStrategyOptions
+    {
+        EnabledGenerator = args =&gt;
+        {
+            // Enable chaos in development and staging environments.
+            if (environment.IsDevelopment() || environment.IsStaging())
+            {
+                return ValueTask.FromResult(true);
+            }
+
+            // Enable chaos for specific users or tenants, even in production environments.
+            if (ShouldEnableChaos(args.Context))
+            {
+                return ValueTask.FromResult(true);
+            }
+
+            return ValueTask.FromResult(false);
+        },
+        InjectionRateGenerator = args =&gt;
+        {
+            if (environment.IsStaging())
+            {
+                // 1% chance of failure on staging environments.
+                return ValueTask.FromResult(0.01);
+            }
+
+            if (environment.IsDevelopment())
+            {
+                // 5% chance of failure on development environments.
+                return ValueTask.FromResult(0.05);
+            }
+
+            // The context can carry information to help determine the injection rate.
+            // For instance, in production environments, you might have certain test users or tenants
+            // for whom you wish to inject chaos.
+            if (ResolveInjectionRate(args.Context, out double injectionRate))
+            {
+                return ValueTask.FromResult(injectionRate);
+            }
+
+            // No chaos on production environments.
+            return ValueTask.FromResult(0.0);
+        },
+        FaultGenerator = new FaultGenerator()
+            .AddException&lt;TimeoutException&gt;()
+            .AddException&lt;HttpRequestException&gt;()
+    });
+});
+</code></pre>
+<!-- endSnippet -->
+<p>We suggest encapsulating the chaos decisions and injection rate in a shared class, such as <code>IChaosManager</code>:</p>
+<!-- snippet: chaos-manager -->
+<pre><code class="lang-cs">public interface IChaosManager
+{
+    ValueTask&lt;bool&gt; IsChaosEnabled(ResilienceContext context);
+
+    ValueTask&lt;double&gt; GetInjectionRate(ResilienceContext context);
+}
+</code></pre>
+<!-- endSnippet -->
+<p>This approach allows you to consistently apply and manage chaos-related settings across various chaos strategies by reusing <code>IChaosManager</code>. By centralizing the logic for enabling chaos and determining injection rates, you can ensure uniformity and ease of maintenance across your application and reuse it across multiple chaos strategies:</p>
+<!-- snippet: chaos-selective-manager -->
+<pre><code class="lang-cs">services.AddResiliencePipeline(&quot;chaos-pipeline&quot;, (builder, context) =&gt;
+{
+    var chaosManager = context.ServiceProvider.GetRequiredService&lt;IChaosManager&gt;();
+
+    builder
+        .AddChaosFault(new ChaosFaultStrategyOptions
+        {
+            EnabledGenerator = args =&gt; chaosManager.IsChaosEnabled(args.Context),
+            InjectionRateGenerator = args =&gt; chaosManager.GetInjectionRate(args.Context),
+            FaultGenerator = new FaultGenerator()
+                .AddException&lt;TimeoutException&gt;()
+                .AddException&lt;HttpRequestException&gt;()
+        })
+        .AddChaosLatency(new ChaosLatencyStrategyOptions
+        {
+            EnabledGenerator = args =&gt; chaosManager.IsChaosEnabled(args.Context),
+            InjectionRateGenerator = args =&gt; chaosManager.GetInjectionRate(args.Context),
+            Latency = TimeSpan.FromSeconds(60)
+        });
+});
+</code></pre>
+<!-- endSnippet -->
+<div class="NOTE">
+<h5>Note</h5>
+<p>An alternative method involves using <a href="https://www.nuget.org/packages/Microsoft.Extensions.AsyncState"><code>Microsoft.Extensions.AsyncState</code></a> for storing information relevant to chaos injection decisions. This can be particularly useful in frameworks like ASP.NET Core. For instance, you could implement a middleware that retrieves user information from <code>HttpContext</code>, assesses the user type, and then stores this data in <code>IAsyncContext&lt;ChaosUser&gt;</code>. Subsequently, <code>IChaosManager</code> can access <code>IAsyncContext&lt;ChaosUser&gt;</code> to retrieve this information. This approach eliminates the need to manually insert such data into <code>ResilienceContext</code> for each call within the resilience pipeline, thereby streamlining the process.</p>
+</div>
+<h3 id="integrating-chaos-pipelines">Integrating chaos pipelines</h3>
+<p>When integrating chaos pipelines with resilience strategies, consider the following approaches:</p>
+<ul>
+<li>Establish a central resilience pipeline and apply it across various pipelines.</li>
+<li>Incorporate chaos strategies into each resilience pipeline individually.</li>
+</ul>
+<p>Each approach has its own set of advantages and disadvantages.</p>
+<h4 id="integrating-chaos-pipelines-with-a-central-pipeline">Integrating chaos pipelines with a central pipeline</h4>
+<p>To integrate chaos pipelines using a central approach, first define a central chaos pipeline that will be reused across various resilience pipelines:</p>
+<!-- snippet: chaos-central-pipeline -->
+<pre><code class="lang-cs">services.AddResiliencePipeline(&quot;chaos-pipeline&quot;, (builder, context) =&gt;
+{
+    var chaosManager = context.ServiceProvider.GetRequiredService&lt;IChaosManager&gt;();
+
+    builder
+        .AddChaosFault(new ChaosFaultStrategyOptions
+        {
+            FaultGenerator = new FaultGenerator()
+                .AddException&lt;TimeoutException&gt;()
+                .AddException&lt;HttpRequestException&gt;()
+        })
+        .AddChaosLatency(new ChaosLatencyStrategyOptions
+        {
+            Latency = TimeSpan.FromSeconds(60)
+        });
+});
+</code></pre>
+<!-- endSnippet -->
+<p>Next, when defining a pipeline, use <code>ResiliencePipelineProvider&lt;T&gt;</code> to integrate the chaos pipeline using the <code>AddPipeline</code> extension method:</p>
+<!-- snippet: chaos-central-pipeline-integration -->
+<pre><code class="lang-cs">services.AddResiliencePipeline(&quot;my-pipeline-1&quot;, (builder, context) =&gt;
+{
+    var pipelineProvider = context.ServiceProvider.GetRequiredService&lt;ResiliencePipelineProvider&lt;string&gt;&gt;();
+    var chaosPipeline = pipelineProvider.GetPipeline(&quot;chaos-pipeline&quot;);
+
+    builder
+        .AddRetry(new RetryStrategyOptions())
+        .AddTimeout(TimeSpan.FromSeconds(5))
+        .AddPipeline(chaosPipeline); // Inject central chaos pipeline
+
+});
+</code></pre>
+<!-- endSnippet -->
+<p>✅ Central management of the chaos pipeline allows for easy integration into other resilience pipelines.</p>
+<p>❌ It's challenging to correlate telemetry between the chaos and resilience pipelines. Telemetry from the chaos pipeline is emitted under <code>chaos-pipeline</code>, while the regular resilience pipeline telemetry appears under <code>my-pipeline-1</code>.</p>
+<p>❌ Fine-tuning the chaos pipeline's behavior to suit specific resilience pipelines is not straightforward. In certain scenarios, you might want to adjust failure rates for a particular pipeline.</p>
+<h4 id="integrating-chaos-pipelines-with-extensions">Integrating chaos pipelines with extensions</h4>
+<p>In this approach, a helper extension method can be introduced to add a predefined set of chaos strategies to <code>ResiliencePipelineBuilder&lt;T&gt;</code>:</p>
+<!-- snippet: chaos-extension -->
+<pre><code class="lang-cs">// Options that represent the chaos pipeline
+public class MyChaosOptions
+{
+    public ChaosFaultStrategyOptions Fault { get; set; } = new()
+    {
+        FaultGenerator = new FaultGenerator()
+            .AddException&lt;TimeoutException&gt;()
+            .AddException&lt;HttpRequestException&gt;()
+    };
+
+    public ChaosLatencyStrategyOptions Latency { get; set; } = new()
+    {
+        Latency = TimeSpan.FromSeconds(60)
+    };
+}
+
+// Extension for easy integration of the chaos pipeline
+public static void AddMyChaos(this ResiliencePipelineBuilder builder, Action&lt;MyChaosOptions&gt;? configure = null)
+{
+    var options = new MyChaosOptions();
+    configure?.Invoke(options);
+
+    builder
+        .AddChaosFault(options.Fault)
+        .AddChaosLatency(options.Latency);
+}
+</code></pre>
+<!-- endSnippet -->
+<p>The example above:</p>
+<ul>
+<li>Defines <code>MyChaosOptions</code>, which encapsulates options for the chaos pipeline with sensible defaults.</li>
+<li>Introduces the <code>AddMyChaos</code> extension method for straightforward integration of a custom pipeline into any resilience strategy. It also provides flexibility to modify the pipeline's configuration.</li>
+</ul>
+<p>Once the chaos extension is in place, it can be utilized in defining your resilience pipelines:</p>
+<!-- snippet: chaos-extension-integration -->
+<pre><code class="lang-cs">services.AddResiliencePipeline(&quot;my-pipeline-1&quot;, (builder, context) =&gt;
+{
+    builder
+        .AddRetry(new RetryStrategyOptions())
+        .AddTimeout(TimeSpan.FromSeconds(5))
+        .AddMyChaos(); // Use the extension
+});
+
+services.AddResiliencePipeline(&quot;my-pipeline-2&quot;, (builder, context) =&gt;
+{
+    builder
+        .AddRetry(new RetryStrategyOptions())
+        .AddTimeout(TimeSpan.FromSeconds(5))
+        .AddMyChaos(options =&gt;
+        {
+            options.Latency.InjectionRate = 0.1; // Override the default injection rate
+            options.Latency.Latency = TimeSpan.FromSeconds(10); // Override the default latency
+        });
+});
+</code></pre>
+<!-- endSnippet -->
+<p>✅ Enables configuration and customization of chaos strategies for each pipeline, while maintaining a centralized logic.</p>
+<p>✅ Simplifies telemetry correlation as chaos strategies share the same pipeline name.</p>
+<p>❌ Increased maintenance due to additional code, with flexibility coming at the expense of complexity.</p>
+<p>❌ Monitoring multiple chaos pipelines may be necessary to understand their behavior.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/martincostello/polly-release-testing/blob/main/docs/chaos/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

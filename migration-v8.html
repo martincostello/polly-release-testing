@@ -1,0 +1,1160 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+      <title>Migration guide from v7 to v8 | Polly </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Migration guide from v7 to v8 | Polly ">
+      
+      
+      <link rel="icon" href="icon.png">
+      <link rel="stylesheet" href="public/docfx.min.css">
+      <link rel="stylesheet" href="public/main.css">
+      <meta name="docfx:navrel" content="toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/martincostello/polly-release-testing/blob/main/docs/migration-v8.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+  </head>
+
+  <script type="module" src="./public/docfx.min.js"></script>
+
+  <script>
+    const theme = localStorage.getItem('theme') || 'auto'
+    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+  </script>
+
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="index.html">
+            <img id="logo" class="svg" src="icon.png" alt="Polly">
+            Polly
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="migration-guide-from-v7-to-v8">Migration guide from v7 to v8</h1>
+
+<p>Welcome to the migration guide for Polly's v8 release. Version 8 of Polly brings major new enhancements and supports all of the same scenarios as previous versions. In the following sections, we'll detail the differences between the v7 and v8 APIs, and provide steps on how to transition smoothly.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The v7 API is still available and fully supported even when using the v8 version by referencing the <a href="https://www.nuget.org/packages/Polly">Polly</a> package.</p>
+</div>
+<h2 id="major-differences">Major differences</h2>
+<ul>
+<li><strong>The term <em>Policy</em> is now replaced with <em>Strategy</em></strong>: In previous versions, Polly used the term <em>policy</em> for retries, timeouts, etc. In v8, these are referred to as <em>resilience strategies</em>.</li>
+<li><strong>Introduction of Resilience Pipelines</strong>: A <a href="pipelines/index.html">resilience pipeline</a> combines one or more resilience strategies. This is the foundational API for Polly v8, similar to the <strong>Policy Wrap</strong> in previous versions but integrated into the core API.</li>
+<li><strong>Unified sync and async flows</strong>: Interfaces such as <code>IAsyncPolicy</code>, <code>IAsyncPolicy&lt;T&gt;</code>, <code>ISyncPolicy</code>, <code>ISyncPolicy&lt;T&gt;</code>, and <code>IPolicy</code> are now unified under <code>ResiliencePipeline</code> and <code>ResiliencePipeline&lt;T&gt;</code>. The resilience pipeline supports both synchronous and asynchronous execution flows.</li>
+<li><strong>Native async support</strong>: Polly v8 was designed with asynchronous support from the start.</li>
+<li><strong>No static APIs</strong>: Unlike previous versions, v8 doesn't use static APIs. This improves testability and extensibility while maintaining ease of use.</li>
+<li><strong>Options-based configuration</strong>: Configuring individual resilience strategies is now options-based, offering more flexibility and improving maintainability and extensibility.</li>
+<li><strong>Built-in telemetry</strong>: Polly v8 now has built-in telemetry support.</li>
+<li><strong>Improved performance and low-allocation APIs</strong>: Polly v8 brings significant performance enhancements and provides zero-allocation APIs for advanced use cases.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Please read the comments in the code carefully for additional context and explanations.</p>
+</div>
+<h2 id="polly-or-pollycore-package">Polly or Polly.Core package</h2>
+<p>When you do your migration process it is recommended to follow these steps:</p>
+<ul>
+<li>Upgrade the <code>Polly</code> package version from 7.x to 8.x
+<ul>
+<li>Your previous policies should run smoothly without any change</li>
+</ul>
+</li>
+<li>Migrate your V7 policies to V8 strategies gradually, such as one at a time
+<ul>
+<li>Test your migrated code thoroughly</li>
+</ul>
+</li>
+<li>After you have successfully migrated all your legacy Polly code then change your package reference from <code>Polly</code> to <a href="https://www.nuget.org/packages/Polly.Core"><code>Polly.Core</code></a></li>
+</ul>
+<h2 id="migrating-execution-policies">Migrating execution policies</h2>
+<p>This section describes how to migrate from execution policies (i.e. <code>IAsyncPolicy</code>, <code>ISyncPolicy</code>) to resilience pipelines (i.e. <code>ResiliencePipeline</code>, <code>ResiliencePipeline&lt;T&gt;</code>).</p>
+<h3 id="configuring-policies-in-v7">Configuring policies in v7</h3>
+<p>In earlier versions, Polly exposed various interfaces to execute user code:</p>
+<ul>
+<li><code>IAsyncPolicy</code></li>
+<li><code>IAsyncPolicy&lt;T&gt;</code></li>
+<li><code>ISyncPolicy</code></li>
+<li><code>ISyncPolicy&lt;T&gt;</code></li>
+</ul>
+<p>These interfaces were created and used as shown below:</p>
+<!-- snippet: migration-policies-v7 -->
+<pre><code class="lang-cs">// Create and use the ISyncPolicy.
+ISyncPolicy syncPolicy = Policy
+    .Handle&lt;Exception&gt;()
+    .WaitAndRetry(3, _ =&gt; TimeSpan.FromSeconds(1));
+
+syncPolicy.Execute(() =&gt;
+{
+    // Your code goes here
+});
+
+// Create and use the IAsyncPolicy
+IAsyncPolicy asyncPolicy = Policy
+    .Handle&lt;Exception&gt;()
+    .WaitAndRetryAsync(3, _ =&gt; TimeSpan.FromSeconds(1));
+await asyncPolicy.ExecuteAsync(async token =&gt;
+{
+    // Your code goes here
+}, cancellationToken);
+
+// Create and use the ISyncPolicy&lt;T&gt;
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .HandleResult(result =&gt; !result.IsSuccessStatusCode)
+    .WaitAndRetry(3, _ =&gt; TimeSpan.FromSeconds(1));
+
+syncPolicyT.Execute(() =&gt;
+{
+    // Your code goes here
+    return GetResponse();
+});
+
+// Create and use the IAsyncPolicy&lt;T&gt;
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .HandleResult(result =&gt; !result.IsSuccessStatusCode)
+    .WaitAndRetryAsync(3, _ =&gt; TimeSpan.FromSeconds(1));
+
+await asyncPolicyT.ExecuteAsync(async token =&gt;
+{
+    // Your code goes here
+    return await GetResponseAsync(token);
+}, cancellationToken);
+</code></pre>
+<!-- endSnippet -->
+<h3 id="configuring-strategies-in-v8">Configuring strategies in v8</h3>
+<p>In Polly v8, there are no such interfaces. The previous samples become:</p>
+<!-- snippet: migration-policies-v8 -->
+<pre><code class="lang-cs">// Create and use the ResiliencePipeline.
+//
+// Use the ResiliencePipelineBuilder to start building the resilience pipeline
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddRetry(new RetryStrategyOptions
+    {
+        ShouldHandle = new PredicateBuilder().Handle&lt;Exception&gt;(),
+        Delay = TimeSpan.FromSeconds(1),
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Constant
+    })
+    .Build(); // After all necessary strategies are added, call Build() to create the pipeline.
+
+// Synchronous execution
+pipeline.Execute(static () =&gt;
+{
+    // Your code goes here
+});
+
+// Asynchronous execution is also supported with the same pipeline instance
+await pipeline.ExecuteAsync(static async token =&gt;
+{
+    // Your code goes here
+}, cancellationToken);
+
+// Create and use the ResiliencePipeline&lt;T&gt;.
+//
+// Building of generic resilience pipeline is very similar to non-generic one.
+// Notice the use of generic RetryStrategyOptions&lt;HttpResponseMessage&gt; to configure the strategy.
+ResiliencePipeline&lt;HttpResponseMessage&gt; pipelineT = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddRetry(new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+    {
+        ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+            .Handle&lt;Exception&gt;()
+            .HandleResult(static result =&gt; !result.IsSuccessStatusCode),
+        Delay = TimeSpan.FromSeconds(1),
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Constant
+    })
+    .Build();
+
+// Synchronous execution
+pipelineT.Execute(static () =&gt;
+{
+    // Your code goes here
+    return GetResponse();
+});
+
+// Asynchronous execution
+await pipelineT.ExecuteAsync(static async token =&gt;
+{
+    // Your code goes here
+    return await GetResponseAsync(token);
+}, cancellationToken);
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>ResiliencePipelineBuilder{&lt;TResult&gt;}</code> to build a resiliency pipeline</li>
+<li>Use one of the <code>Add*</code> builder methods to add a new strategy to the pipeline</li>
+<li>Use either <code>Execute</code> or <code>ExecuteAsync</code> depending on the execution context</li>
+</ul>
+<p>For further information please check out the <a href="pipelines/index.html">Resilience pipelines documentation</a>.</p>
+</div>
+<h2 id="migrating-policy-wrap">Migrating policy wrap</h2>
+<h3 id="policy-wrap-in-v7">Policy wrap in v7</h3>
+<p>Policy wrap is used to combine multiple policies into one:</p>
+<!-- snippet: migration-policy-wrap-v7 -->
+<pre><code class="lang-cs">IAsyncPolicy retryPolicy = Policy.Handle&lt;Exception&gt;().WaitAndRetryAsync(3, _ =&gt; TimeSpan.FromSeconds(1));
+
+IAsyncPolicy timeoutPolicy = Policy.TimeoutAsync(TimeSpan.FromSeconds(3));
+
+// Wrap the policies. The policies are executed in the following order:
+// 1. Retry &lt;== outer
+// 2. Timeout &lt;== inner
+IAsyncPolicy wrappedPolicy = Policy.WrapAsync(retryPolicy, timeoutPolicy);
+</code></pre>
+<!-- endSnippet -->
+<h3 id="policy-wrap-in-v8">Policy wrap in v8</h3>
+<p>In v8, there's no need to use policy wrap explicitly. Instead, policy wrapping is integrated into <code>ResiliencePipelineBuilder</code>:</p>
+<!-- snippet: migration-policy-wrap-v8 -->
+<pre><code class="lang-cs">// The &quot;PolicyWrap&quot; is integrated directly. The strategies are executed in the following order:
+// 1. Retry &lt;== outer
+// 2. Timeout &lt;== inner
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddRetry(new()
+    {
+        MaxRetryAttempts = 3,
+        Delay = TimeSpan.FromSeconds(1),
+        BackoffType = DelayBackoffType.Constant,
+        ShouldHandle = new PredicateBuilder().Handle&lt;Exception&gt;()
+    })
+    .AddTimeout(TimeSpan.FromSeconds(3))
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<p>See <a href="strategies/fallback.html#fallback-after-retries">fallback after retries</a> for an example on how the strategies are executed.</p>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>ResiliencePipelineBuilder{&lt;TResult&gt;}</code> to build a resiliency pipeline</li>
+<li>Use multiple <code>Add*</code> builder methods to add new strategies to your pipeline</li>
+</ul>
+<p>For further information please check out the <a href="pipelines/index.html">Resilience pipelines documentation</a>.</p>
+</div>
+<h2 id="migrating-retry-policies">Migrating retry policies</h2>
+<p>This section describes how to migrate v7 retry policies to V8 retry strategies.</p>
+<h3 id="retry-in-v7">Retry in v7</h3>
+<p>In v7 the retry policy is configured as:</p>
+<!-- snippet: migration-retry-v7 -->
+<pre><code class="lang-cs">// Retry once
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .Retry();
+
+// Retry multiple times
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .Retry(3);
+
+// Retry multiple times with callback
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .Retry(3, onRetry: (exception, retryCount) =&gt;
+    {
+        // Add logic to be executed before each retry, such as logging
+    });
+
+// Retry forever
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .RetryForever();
+</code></pre>
+<!-- endSnippet -->
+<h3 id="retry-in-v8">Retry in v8</h3>
+<p>In v8 the retry strategy is configured as:</p>
+<!-- snippet: migration-retry-v8 -->
+<pre><code class="lang-cs">// Retry once
+//
+// Because we are adding retries to a non-generic pipeline,
+// we use the non-generic RetryStrategyOptions.
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    // PredicateBuilder is used to simplify the initialization of predicates.
+    // Its API should be familiar to the v7 way of configuring what exceptions to handle.
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = 1,
+    // To disable waiting between retries, set the Delay property to TimeSpan.Zero.
+    Delay = TimeSpan.Zero,
+})
+.Build();
+
+// Retry multiple times
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = 3,
+    Delay = TimeSpan.Zero,
+})
+.Build();
+
+// Retry multiple times with callback
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = 3,
+    Delay = TimeSpan.Zero,
+    OnRetry = static args =&gt;
+    {
+        // Add logic to be executed before each retry, such as logging
+        return default;
+    }
+})
+.Build();
+
+// Retry forever
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    // To retry forever, set the MaxRetryAttempts property to int.MaxValue.
+    MaxRetryAttempts = int.MaxValue,
+    Delay = TimeSpan.Zero,
+})
+.Build();
+</code></pre>
+<!-- endSnippet -->
+<h3 id="retry-and-wait-in-v7">Retry and wait in v7</h3>
+<!-- snippet: migration-retry-wait-v7 -->
+<pre><code class="lang-cs">// Wait and retry multiple times
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .WaitAndRetry(3, _ =&gt; TimeSpan.FromSeconds(1));
+
+// Wait and retry multiple times with callback
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .WaitAndRetry(3, _ =&gt; TimeSpan.FromSeconds(1), onRetry: (exception, retryCount) =&gt;
+    {
+        // Add logic to be executed before each retry, such as logging
+    });
+
+// Wait and retry forever
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .WaitAndRetryForever(_ =&gt; TimeSpan.FromSeconds(1));
+</code></pre>
+<!-- endSnippet -->
+<h3 id="retry-and-wait-in-v8">Retry and wait in v8</h3>
+<!-- snippet: migration-retry-wait-v8 -->
+<pre><code class="lang-cs">// Wait and retry multiple times
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = 3,
+    Delay = TimeSpan.FromSeconds(1),
+    BackoffType = DelayBackoffType.Constant
+})
+.Build();
+
+// Wait and retry multiple times with callback
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = 3,
+    Delay = TimeSpan.FromSeconds(1),
+    BackoffType = DelayBackoffType.Constant,
+    OnRetry = static args =&gt;
+    {
+        // Add logic to be executed before each retry, such as logging
+        return default;
+    }
+})
+.Build();
+
+// Wait and retry forever
+new ResiliencePipelineBuilder().AddRetry(new RetryStrategyOptions
+{
+    ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+    MaxRetryAttempts = int.MaxValue,
+    Delay = TimeSpan.FromSeconds(1),
+    BackoffType = DelayBackoffType.Constant
+})
+.Build();
+</code></pre>
+<!-- endSnippet -->
+<h3 id="retry-results-in-v7">Retry results in v7</h3>
+<!-- snippet: migration-retry-reactive-v7 -->
+<pre><code class="lang-cs">// Wait and retry with result handling
+Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .OrResult&lt;HttpResponseMessage&gt;(result =&gt; result.StatusCode == HttpStatusCode.InternalServerError)
+    .WaitAndRetry(3, _ =&gt; TimeSpan.FromSeconds(1));
+</code></pre>
+<!-- endSnippet -->
+<h3 id="retry-results-in-v8">Retry results in v8</h3>
+<!-- snippet: migration-retry-reactive-v8 -->
+<pre><code class="lang-cs">// Shows how to add a retry strategy that also retries particular results.
+new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;().AddRetry(new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+{
+    // PredicateBuilder is a convenience API that can used to configure the ShouldHandle predicate.
+    ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+        .Handle&lt;SomeExceptionType&gt;()
+        .HandleResult(static result =&gt; result.StatusCode == HttpStatusCode.InternalServerError),
+    MaxRetryAttempts = 3,
+})
+.Build();
+
+// The same as above, but using the switch expressions for best performance.
+new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;().AddRetry(new RetryStrategyOptions&lt;HttpResponseMessage&gt;
+{
+    // Determine what results to retry using switch expressions.
+    // Note that PredicateResult.True() is just a shortcut for &quot;new ValueTask&lt;bool&gt;(true)&quot;.
+    ShouldHandle = static args =&gt; args.Outcome switch
+    {
+        { Exception: SomeExceptionType } =&gt; PredicateResult.True(),
+        { Result: { StatusCode: HttpStatusCode.InternalServerError } } =&gt; PredicateResult.True(),
+        _ =&gt; PredicateResult.False()
+    },
+    MaxRetryAttempts = 3,
+})
+.Build();
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>AddRetry</code> to add a retry strategy to your resiliency pipeline</li>
+<li>Use the <code>RetryStrategyOptions{&lt;TResult&gt;}</code> to customize your retry behavior to meet your requirements</li>
+</ul>
+<p>For further information please check out the <a href="strategies/retry.html">Retry resilience strategy documentation</a>.</p>
+</div>
+<h2 id="migrating-rate-limit-policies">Migrating rate limit policies</h2>
+<p>The rate limit policy is now replaced by the <a href="strategies/rate-limiter.html">rate limiter strategy</a> which uses the <a href="https://www.nuget.org/packages/System.Threading.RateLimiting"><code>System.Threading.RateLimiting</code></a> package. Polly does not implement its own rate limiter anymore.</p>
+<h3 id="rate-limit-in-v7">Rate limit in v7</h3>
+<!-- snippet: migration-rate-limit-v7 -->
+<pre><code class="lang-cs">// Create sync rate limiter
+ISyncPolicy syncPolicy = Policy.RateLimit(
+    numberOfExecutions: 100,
+    perTimeSpan: TimeSpan.FromMinutes(1));
+
+// Create async rate limiter
+IAsyncPolicy asyncPolicy = Policy.RateLimitAsync(
+    numberOfExecutions: 100,
+    perTimeSpan: TimeSpan.FromMinutes(1));
+
+// Create generic sync rate limiter
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy.RateLimit&lt;HttpResponseMessage&gt;(
+    numberOfExecutions: 100,
+    perTimeSpan: TimeSpan.FromMinutes(1));
+
+// Create generic async rate limiter
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy.RateLimitAsync&lt;HttpResponseMessage&gt;(
+    numberOfExecutions: 100,
+    perTimeSpan: TimeSpan.FromMinutes(1));
+</code></pre>
+<!-- endSnippet -->
+<h3 id="rate-limit-in-v8">Rate limit in v8</h3>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In v8, you have to add the <a href="https://www.nuget.org/packages/Polly.RateLimiting"><code>Polly.RateLimiting</code></a> package to your application otherwise you won't see the <code>AddRateLimiter</code> extension.</p>
+</div>
+<!-- snippet: migration-rate-limit-v8 -->
+<pre><code class="lang-cs">// The equivalent to Polly v7's RateLimit is the SlidingWindowRateLimiter.
+//
+// Polly exposes just a simple wrapper to the APIs exposed by the System.Threading.RateLimiting APIs.
+// There is no need to create separate instances for sync and async flows as ResiliencePipeline handles both scenarios.
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
+    {
+        PermitLimit = 100,
+        Window = TimeSpan.FromMinutes(1),
+    }))
+    .Build();
+
+// The creation of generic pipeline is almost identical.
+//
+// Polly exposes the same set of rate-limiter extensions for both ResiliencePipeline&lt;HttpResponseMessage&gt; and ResiliencePipeline.
+ResiliencePipeline&lt;HttpResponseMessage&gt; pipelineT = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddRateLimiter(new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
+    {
+        PermitLimit = 100,
+        Window = TimeSpan.FromMinutes(1),
+    }))
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>AddRateLimiter</code> to add a rate limiter strategy to your resiliency pipeline</li>
+<li>Use one of the derived classes of <a href="https://learn.microsoft.com/dotnet/api/system.threading.ratelimiting.replenishingratelimiter"><code>ReplenishingRateLimiter</code></a> to customize your rate limiter behavior to meet your requirements</li>
+</ul>
+<p>For further information please check out the <a href="strategies/rate-limiter.html">Rate limiter resilience strategy documentation</a>.</p>
+</div>
+<h2 id="migrating-bulkhead-policies">Migrating bulkhead policies</h2>
+<p>The bulkhead policy is now replaced by the <a href="strategies/rate-limiter.html">rate limiter strategy</a> which uses the <a href="https://www.nuget.org/packages/System.Threading.RateLimiting"><code>System.Threading.RateLimiting</code></a> package. The new counterpart to bulkhead is <code>ConcurrencyLimiter</code>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In v7, the bulkhead was presented as an individual strategy. In v8, it's not separately exposed because it's essentially a specialized type of rate limiter: the <code>ConcurrencyLimiter</code>.</p>
+</div>
+<h3 id="bulkhead-in-v7">Bulkhead in v7</h3>
+<!-- snippet: migration-bulkhead-v7 -->
+<pre><code class="lang-cs">// Create sync bulkhead
+ISyncPolicy syncPolicy = Policy.Bulkhead(
+    maxParallelization: 100,
+    maxQueuingActions: 50);
+
+// Create async bulkhead
+IAsyncPolicy asyncPolicy = Policy.BulkheadAsync(
+    maxParallelization: 100,
+    maxQueuingActions: 50);
+
+// Create generic sync bulkhead
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy.Bulkhead&lt;HttpResponseMessage&gt;(
+    maxParallelization: 100,
+    maxQueuingActions: 50);
+
+// Create generic async bulkhead
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy.BulkheadAsync&lt;HttpResponseMessage&gt;(
+    maxParallelization: 100,
+    maxQueuingActions: 50);
+</code></pre>
+<!-- endSnippet -->
+<h3 id="bulkhead-in-v8">Bulkhead in v8</h3>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In v8, you have to add the <a href="https://www.nuget.org/packages/Polly.RateLimiting"><code>Polly.RateLimiting</code></a> package to your application otherwise you won't see the <code>AddConcurrencyLimiter</code> extension.</p>
+</div>
+<!-- snippet: migration-bulkhead-v8 -->
+<pre><code class="lang-cs">// Create pipeline with concurrency limiter. Because ResiliencePipeline supports both sync and async
+// callbacks, there is no need to define it twice.
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddConcurrencyLimiter(permitLimit: 100, queueLimit: 50)
+    .Build();
+
+// Create a generic pipeline with concurrency limiter. Because ResiliencePipeline&lt;T&gt; supports both sync and async
+// callbacks, there is no need to define it twice.
+ResiliencePipeline&lt;HttpResponseMessage&gt; pipelineT = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddConcurrencyLimiter(permitLimit: 100, queueLimit: 50)
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>AddConcurrencyLimiter</code> to add a concurrency limiter strategy to your resiliency pipeline</li>
+<li>Use the <code>ConcurrencyLimiterOptions</code> to customize your concurrency limiter behavior to meet your requirements</li>
+</ul>
+<p>For further information please check out the <a href="strategies/rate-limiter.html">Rate limiter resilience strategy documentation</a>.</p>
+</div>
+<h2 id="migrating-timeout-policies">Migrating timeout policies</h2>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In v8, the timeout resilience strategy does not support pessimistic timeouts because they can cause thread-pool starvation and non-cancellable background tasks. To address this, you can use <a href="https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#cancelling-uncancellable-operations">this workaround</a> to make the action cancellable.</p>
+</div>
+<h3 id="timeout-in-v7">Timeout in v7</h3>
+<!-- snippet: migration-timeout-v7 -->
+<pre><code class="lang-cs">// Create sync timeout
+ISyncPolicy syncPolicy = Policy.Timeout(TimeSpan.FromSeconds(10));
+
+// Create async timeout
+IAsyncPolicy asyncPolicy = Policy.TimeoutAsync(TimeSpan.FromSeconds(10));
+
+// Create generic sync timeout
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy.Timeout&lt;HttpResponseMessage&gt;(TimeSpan.FromSeconds(10));
+
+// Create generic async timeout
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy.TimeoutAsync&lt;HttpResponseMessage&gt;(TimeSpan.FromSeconds(10));
+</code></pre>
+<!-- endSnippet -->
+<h3 id="timeout-in-v8">Timeout in v8</h3>
+<!-- snippet: migration-timeout-v8 -->
+<pre><code class="lang-cs">// Create pipeline with timeout. Because ResiliencePipeline supports both sync and async
+// callbacks, there is no need to define it twice.
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddTimeout(TimeSpan.FromSeconds(10))
+    .Build();
+
+// Create a generic pipeline with timeout. Because ResiliencePipeline&lt;T&gt; supports both sync and async
+// callbacks, there is no need to define it twice.
+ResiliencePipeline&lt;HttpResponseMessage&gt; pipelineT = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddTimeout(TimeSpan.FromSeconds(10))
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>AddTimeout</code> to add a timeout strategy to your resiliency pipeline</li>
+<li>Use the <code>TimeoutStrategyOptions</code> to customize your timeout behavior to meet your requirements</li>
+</ul>
+<p>For further information please check out the <a href="strategies/timeout.html">Timeout resilience strategy documentation</a>.</p>
+</div>
+<h2 id="migrating-circuit-breaker-policies">Migrating circuit breaker policies</h2>
+<p>This section describes how to migrate v7 circuit breaker policies to V8 circuit breaker strategies.</p>
+<h3 id="circuit-breaker-in-v7">Circuit breaker in v7</h3>
+<p>V7's &quot;Standard&quot; Circuit Breaker policy could be defined like below:</p>
+<!-- snippet: migration-circuit-breaker-v7 -->
+<pre><code class="lang-cs">// Create sync circuit breaker
+ISyncPolicy syncPolicy = Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .CircuitBreaker(
+        exceptionsAllowedBeforeBreaking: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create async circuit breaker
+IAsyncPolicy asyncPolicy = Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .CircuitBreakerAsync(
+        exceptionsAllowedBeforeBreaking: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create generic sync circuit breaker
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .Handle&lt;SomeExceptionType&gt;()
+    .CircuitBreaker(
+        handledEventsAllowedBeforeBreaking: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create generic async circuit breaker
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .Handle&lt;SomeExceptionType&gt;()
+    .CircuitBreakerAsync(
+        handledEventsAllowedBeforeBreaking: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+</code></pre>
+<!-- endSnippet -->
+<p>V7's Advanced Circuit Breaker policy could be defined like below:</p>
+<!-- snippet: migration-advanced-circuit-breaker-v7 -->
+<pre><code class="lang-cs">// Create sync advanced circuit breaker
+ISyncPolicy syncPolicy = Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .AdvancedCircuitBreaker(
+        failureThreshold: 0.5d,
+        samplingDuration: TimeSpan.FromSeconds(5),
+        minimumThroughput: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create async advanced circuit breaker
+IAsyncPolicy asyncPolicy = Policy
+    .Handle&lt;SomeExceptionType&gt;()
+    .AdvancedCircuitBreakerAsync(
+        failureThreshold: 0.5d,
+        samplingDuration: TimeSpan.FromSeconds(5),
+        minimumThroughput: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create generic sync advanced circuit breaker
+ISyncPolicy&lt;HttpResponseMessage&gt; syncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .Handle&lt;SomeExceptionType&gt;()
+    .AdvancedCircuitBreaker(
+        failureThreshold: 0.5d,
+        samplingDuration: TimeSpan.FromSeconds(5),
+        minimumThroughput: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Create generic async advanced circuit breaker
+IAsyncPolicy&lt;HttpResponseMessage&gt; asyncPolicyT = Policy&lt;HttpResponseMessage&gt;
+    .Handle&lt;SomeExceptionType&gt;()
+    .AdvancedCircuitBreakerAsync(
+        failureThreshold: 0.5d,
+        samplingDuration: TimeSpan.FromSeconds(5),
+        minimumThroughput: 2,
+        durationOfBreak: TimeSpan.FromSeconds(1));
+
+// Check circuit state
+ICircuitBreakerPolicy cbPolicy = (ICircuitBreakerPolicy)asyncPolicy;
+bool isOpen = cbPolicy.CircuitState == CircuitState.Open || cbPolicy.CircuitState == CircuitState.Isolated;
+
+// Manually control state
+cbPolicy.Isolate(); // Transitions into the Isolated state
+cbPolicy.Reset(); // Transitions into the Closed state
+</code></pre>
+<!-- endSnippet -->
+<h3 id="circuit-breaker-in-v8">Circuit breaker in v8</h3>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Polly V8 does not support the standard (<em>&quot;classic&quot;</em>) circuit breaker with consecutive failure counting.</p>
+<p>In case of V8 you can define a Circuit Breaker strategy which works like the advanced circuit breaker in V7.</p>
+</div>
+<!-- snippet: migration-circuit-breaker-v8 -->
+<pre><code class="lang-cs">// Create pipeline with circuit breaker. Because ResiliencePipeline supports both sync and async
+// callbacks, there is no need to define it twice.
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+    {
+        ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+        FailureRatio = 0.5d,
+        SamplingDuration = TimeSpan.FromSeconds(5),
+        MinimumThroughput = 2,
+        BreakDuration = TimeSpan.FromSeconds(1)
+    })
+    .Build();
+
+// Create a generic pipeline with circuit breaker. Because ResiliencePipeline&lt;T&gt; supports both sync and async
+// callbacks, there is also no need to define it twice.
+ResiliencePipeline&lt;HttpResponseMessage&gt; pipelineT = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddCircuitBreaker(new CircuitBreakerStrategyOptions&lt;HttpResponseMessage&gt;
+    {
+        ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;().Handle&lt;SomeExceptionType&gt;(),
+        FailureRatio = 0.5d,
+        SamplingDuration = TimeSpan.FromSeconds(5),
+        MinimumThroughput = 2,
+        BreakDuration = TimeSpan.FromSeconds(1)
+    })
+    .Build();
+
+// Check circuit state
+CircuitBreakerStateProvider stateProvider = new();
+// Manually control state
+CircuitBreakerManualControl manualControl = new();
+
+ResiliencePipeline pipelineState = new ResiliencePipelineBuilder()
+    .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+    {
+        ShouldHandle = new PredicateBuilder().Handle&lt;SomeExceptionType&gt;(),
+        FailureRatio = 0.5d,
+        SamplingDuration = TimeSpan.FromSeconds(5),
+        MinimumThroughput = 2,
+        BreakDuration = TimeSpan.FromSeconds(1),
+        StateProvider = stateProvider,
+        ManualControl = manualControl
+    })
+    .Build();
+
+// Check circuit state
+bool isOpen = stateProvider.CircuitState == CircuitState.Open || stateProvider.CircuitState == CircuitState.Isolated;
+
+// Manually control state
+await manualControl.IsolateAsync(); // Transitions into the Isolated state
+await manualControl.CloseAsync(); // Transitions into the Closed state
+</code></pre>
+<!-- endSnippet -->
+<div class="NOTE">
+<h5>Note</h5>
+<p>In case of V7 you could do an optimization to reduce the thrown exceptions.</p>
+<p>You could guard the <code>Execute{Async}</code> call with a condition that the circuit is not broken. This technique does <strong>not</strong> work with V8.</p>
+<p>Under the <a href="strategies/circuit-breaker.html#reducing-thrown-exceptions">circuit breaker's anti-patterns</a> you can find the suggested way for V8.</p>
+</div>
+<hr>
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>AddCircuitBreaker</code> to add a circuit breaker strategy to your resiliency pipeline</li>
+<li>Use the <code>CircuitBreakerStrategyOptions{&lt;TResult&gt;}</code> to customize your circuit breaker behavior to meet your requirements</li>
+</ul>
+<p>For further information please check out the <a href="strategies/circuit-breaker.html">Circuit Breaker resilience strategy documentation</a>.</p>
+</div>
+<h2 id="migrating-pollycontext">Migrating <code>Polly.Context</code></h2>
+<p>The successor of the <code>Polly.Context</code> is the <code>ResilienceContext</code>. The major differences:</p>
+<ul>
+<li><code>ResilienceContext</code> is pooled for enhanced performance and cannot be directly created. Instead, use the <code>ResilienceContextPool</code> class to get an instance.</li>
+<li><code>Context</code> allowed directly custom data attachment, whereas <code>ResilienceContext</code> employs the <code>ResilienceContext.Properties</code> for the same purpose.</li>
+<li>In order to set or get a custom data you need to utilize the generic <code>ResiliencePropertyKey</code> structure.</li>
+</ul>
+<h3 id="predefined-keys">Predefined keys</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">In V7</th>
+<th style="text-align: left;">In V8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>OperationKey</code></td>
+<td style="text-align: left;">It can be used in the same way</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>PolicyKey</code></td>
+<td style="text-align: left;">It's been relocated to <code>ResiliencePipelineBuilder</code> and used for <a href="advanced/telemetry.html#metrics">telemetry</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>PolicyWrapKey</code></td>
+<td style="text-align: left;">It's been relocated to <code>ResiliencePipelineBuilder</code> and used for <a href="advanced/telemetry.html#metrics">telemetry</a></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>CorrelationId</code></td>
+<td style="text-align: left;">It's been removed. For similar functionality, you can either use <code>System.Diagnostics.Activity.Current.Id</code> or attach your custom Id using <code>ResilienceContext.Properties</code>.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Additionally, <code>ResilienceContext</code> introduces a new property for <code>CancellationToken</code>.</li>
+</ul>
+<h3 id="context-in-v7"><code>Context</code> in v7</h3>
+<!-- snippet: migration-context-v7 -->
+<pre><code class="lang-cs">// Create context
+Context context = new Context();
+
+// Create context with operation key
+context = new Context(&quot;my-operation-key&quot;);
+
+// Attach custom properties
+context[Key1] = &quot;value-1&quot;;
+context[Key2] = 100;
+
+// Retrieve custom properties
+string value1 = (string)context[Key1];
+int value2 = (int)context[Key2];
+
+// Bulk attach
+context = new Context(&quot;my-operation-key&quot;, new Dictionary&lt;string, object&gt;
+{
+    { Key1 , &quot;value-1&quot; },
+    { Key2 , 100 }
+});
+</code></pre>
+<!-- endSnippet -->
+<h3 id="resiliencecontext-in-v8"><code>ResilienceContext</code> in v8</h3>
+<!-- snippet: migration-context-v8 -->
+<pre><code class="lang-cs">// Create context
+ResilienceContext context = ResilienceContextPool.Shared.Get();
+
+// Create context with operation key
+context = ResilienceContextPool.Shared.Get(&quot;my-operation-key&quot;);
+
+// Attach custom properties
+ResiliencePropertyKey&lt;string&gt; propertyKey1 = new(Key1);
+context.Properties.Set(propertyKey1, &quot;value-1&quot;);
+
+ResiliencePropertyKey&lt;int&gt; propertyKey2 = new(Key2);
+context.Properties.Set(propertyKey2, 100);
+
+// Bulk attach
+context.Properties.SetProperties(new Dictionary&lt;string, object?&gt;
+{
+    { Key1 , &quot;value-1&quot; },
+    { Key2 , 100 }
+}, out var oldProperties);
+
+// Retrieve custom properties
+string value1 = context.Properties.GetValue(propertyKey1, &quot;default&quot;);
+int value2 = context.Properties.GetValue(propertyKey2, 0);
+
+// Return the context to the pool
+ResilienceContextPool.Shared.Return(context);
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>ResilienceContextPool.Shared</code> to get a context and return it back to the pool</li>
+<li>Use the <code>ResiliencePropertyKey&lt;TValue&gt;</code> to define type-safe keys for your custom data</li>
+</ul>
+<p>For further information please check out the <a href="advanced/resilience-context.html">Resilience Context documentation</a>.</p>
+</div>
+<h2 id="migrating-safe-execution">Migrating safe execution</h2>
+<p>In v7, the <code>ExecuteAndCapture{Async}</code> methods are considered the safe counterpart of the <code>Execute{Async}</code>.</p>
+<p>The former does not throw an exception in case of failure rather than wrap the outcome in a result object.</p>
+<p>In v8, the <code>ExecuteOutcomeAsync</code> method should be used to execute the to-be-decorated method in a safe way.</p>
+<h3 id="executeandcaptureasync-in-v7"><code>ExecuteAndCapture{Async}</code> in V7</h3>
+<!-- snippet: migration-execute-v7 -->
+<pre><code class="lang-cs">// Synchronous execution
+ISyncPolicy&lt;int&gt; syncPolicy = Policy.Timeout&lt;int&gt;(TimeSpan.FromSeconds(1));
+PolicyResult&lt;int&gt; policyResult = syncPolicy.ExecuteAndCapture(Method);
+
+// Asynchronous execution
+IAsyncPolicy&lt;int&gt; asyncPolicy = Policy.TimeoutAsync&lt;int&gt;(TimeSpan.FromSeconds(1));
+PolicyResult&lt;int&gt; asyncPolicyResult = await asyncPolicy.ExecuteAndCaptureAsync(MethodAsync, CancellationToken.None);
+
+// Assess policy result
+if (policyResult.Outcome == OutcomeType.Successful)
+{
+    int result = policyResult.Result;
+
+    // Process result
+}
+else
+{
+    Exception exception = policyResult.FinalException;
+    FaultType faultType = policyResult.FaultType!.Value;
+    ExceptionType exceptionType = policyResult.ExceptionType!.Value;
+
+    // Process failure
+}
+
+// Access context
+const string Key = &quot;context_key&quot;;
+IAsyncPolicy&lt;int&gt; asyncPolicyWithContext = Policy.TimeoutAsync&lt;int&gt;(TimeSpan.FromSeconds(10),
+    onTimeoutAsync: (ctx, ts, task) =&gt;
+    {
+        ctx[Key] = &quot;context_value&quot;;
+        return Task.CompletedTask;
+    });
+
+asyncPolicyResult = await asyncPolicyWithContext.ExecuteAndCaptureAsync((ctx, token) =&gt; MethodAsync(token), new Context(), CancellationToken.None);
+string? ctxValue = asyncPolicyResult.Context.GetValueOrDefault(Key) as string;
+</code></pre>
+<!-- endSnippet -->
+<h3 id="executeoutcomeasync-in-v8"><code>ExecuteOutcomeAsync</code> in V8</h3>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Polly V8 does not provide an API to synchronously execute and capture the outcome of a pipeline.</p>
+</div>
+<!-- snippet: migration-execute-v8 -->
+<pre><code class="lang-cs">ResiliencePipeline&lt;int&gt; pipeline = new ResiliencePipelineBuilder&lt;int&gt;()
+    .AddTimeout(TimeSpan.FromSeconds(1))
+    .Build();
+
+// Synchronous execution
+// Polly v8 does not support
+
+// Asynchronous execution
+var context = ResilienceContextPool.Shared.Get();
+Outcome&lt;int&gt; pipelineResult = await pipeline.ExecuteOutcomeAsync(
+    static async (ctx, state) =&gt; Outcome.FromResult(await MethodAsync(ctx.CancellationToken)), context, &quot;state&quot;);
+ResilienceContextPool.Shared.Return(context);
+
+// Assess policy result
+if (pipelineResult.Exception is null)
+{
+    int result = pipelineResult.Result;
+
+    // Process result
+}
+else
+{
+    Exception exception = pipelineResult.Exception;
+
+    // Process failure
+
+    // If needed you can rethrow the exception
+    pipelineResult.ThrowIfException();
+}
+
+// Access context
+ResiliencePropertyKey&lt;string&gt; contextKey = new(&quot;context_key&quot;);
+ResiliencePipeline&lt;int&gt; pipelineWithContext = new ResiliencePipelineBuilder&lt;int&gt;()
+    .AddTimeout(new TimeoutStrategyOptions
+    {
+        Timeout = TimeSpan.FromSeconds(1),
+        OnTimeout = args =&gt;
+        {
+            args.Context.Properties.Set(contextKey, &quot;context_value&quot;);
+            return default;
+        }
+    })
+    .Build();
+
+context = ResilienceContextPool.Shared.Get();
+pipelineResult = await pipelineWithContext.ExecuteOutcomeAsync(
+    static async (ctx, state) =&gt; Outcome.FromResult(await MethodAsync(ctx.CancellationToken)), context, &quot;state&quot;);
+
+context.Properties.TryGetValue(contextKey, out var ctxValue);
+ResilienceContextPool.Shared.Return(context);
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>ExecuteOutcomeAsync</code> to execute your callback in a safe way</li>
+</ul>
+</div>
+<h2 id="migrating-no-op-policies">Migrating no-op policies</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">In V7</th>
+<th style="text-align: left;">In V8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Policy.NoOp</code></td>
+<td style="text-align: left;"><code>ResiliencePipeline.Empty</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Policy.NoOpAsync</code></td>
+<td style="text-align: left;"><code>ResiliencePipeline.Empty</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Policy.NoOp&lt;TResult&gt;</code></td>
+<td style="text-align: left;"><code>ResiliencePipeline&lt;TResult&gt;.Empty</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Policy.NoOpAsync&lt;TResult&gt;</code></td>
+<td style="text-align: left;"><code>ResiliencePipeline&lt;TResult&gt;.Empty</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="migrating-policy-registries">Migrating policy registries</h2>
+<p>In v7, the following registry APIs are exposed:</p>
+<ul>
+<li><code>IConcurrentPolicyRegistry&lt;TKey&gt;</code></li>
+<li><code>IPolicyRegistry&lt;TKey&gt;</code></li>
+<li><code>IReadOnlyPolicyRegistry&lt;TKey&gt;</code></li>
+<li><code>PolicyRegistry&lt;TKey&gt;</code></li>
+</ul>
+<p>In v8, these have been replaced by:</p>
+<ul>
+<li><code>ResiliencePipelineProvider&lt;TKey&gt;</code>: Allows adding and accessing resilience pipelines.</li>
+<li><code>ResiliencePipelineRegistry&lt;TKey&gt;</code>: Read-only access to resilience pipelines.</li>
+</ul>
+<p>The main updates:</p>
+<ul>
+<li>It's <strong>append-only</strong>, which means removal of items is not supported to avoid race conditions.</li>
+<li>It's thread-safe and supports features like dynamic reloading and resource disposal.</li>
+<li>It allows dynamic creation and caching of resilience pipelines using pre-registered delegates.</li>
+<li>Type safety is enhanced, eliminating the need for casting between policy types.</li>
+</ul>
+<h3 id="registry-in-v7">Registry in v7</h3>
+<!-- snippet: migration-registry-v7 -->
+<pre><code class="lang-cs">// Create a registry
+var registry = new PolicyRegistry();
+
+// Add a policy
+registry.Add(PolicyKey, Policy.Timeout(TimeSpan.FromSeconds(10)));
+
+// Try get a policy
+registry.TryGet&lt;IAsyncPolicy&gt;(PolicyKey, out IAsyncPolicy? policy);
+
+// Try get a generic policy
+registry.TryGet&lt;IAsyncPolicy&lt;string&gt;&gt;(PolicyKey, out IAsyncPolicy&lt;string&gt;? genericPolicy);
+
+// Update a policy
+registry.AddOrUpdate(
+    PolicyKey,
+    Policy.Timeout(TimeSpan.FromSeconds(10)),
+    (key, previous) =&gt; Policy.Timeout(TimeSpan.FromSeconds(10)));
+</code></pre>
+<!-- endSnippet -->
+<h3 id="registry-in-v8">Registry in v8</h3>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Polly V8 does not provide an explicit API to directly update a strategy in the registry.</p>
+<p>On the other hand it does provide a mechanism to <a href="pipelines/resilience-pipeline-registry.html#dynamic-reloads">reload pipelines</a>.</p>
+</div>
+<!-- snippet: migration-registry-v8 -->
+<pre><code class="lang-cs">// Create a registry
+var registry = new ResiliencePipelineRegistry&lt;string&gt;();
+
+// Add a pipeline using a builder, when the pipeline is retrieved it will be dynamically built and cached
+registry.TryAddBuilder(PipelineKey, (builder, context) =&gt; builder.AddTimeout(TimeSpan.FromSeconds(10)));
+
+// Try get a pipeline
+registry.TryGetPipeline(PipelineKey, out ResiliencePipeline? pipeline);
+
+// Try get a generic pipeline
+registry.TryGetPipeline&lt;string&gt;(PipelineKey, out ResiliencePipeline&lt;string&gt;? genericPipeline);
+
+// Get or add pipeline
+registry.GetOrAddPipeline(PipelineKey, builder =&gt; builder.AddTimeout(TimeSpan.FromSeconds(10)));
+</code></pre>
+<!-- endSnippet -->
+<div class="TIP">
+<h5>Tip</h5>
+<p>Things to remember:</p>
+<ul>
+<li>Use <code>ResiliencePipelineRegistry&lt;TResult&gt;</code> to add or get a pipelines to the registry</li>
+<li>Prefer the safer methods (for example: <code>TryGetPipeline{&lt;TResult&gt;}</code>) over their counterpart (for example: <code>GetPipeline{&lt;TResult&gt;}</code>)</li>
+</ul>
+<p>For further information please check out the <a href="pipelines/resilience-pipeline-registry.html">Resilience pipeline registry documentation</a>.</p>
+</div>
+<h2 id="interoperability-between-policies-and-resilience-pipelines">Interoperability between policies and resilience pipelines</h2>
+<p>In certain scenarios, you might not able to migrate all your code to the v8 API.</p>
+<p>In the name of interoperability you can define V8 strategies use them with your v7 policies.</p>
+<p>V8 provides a set of extension methods to support easy conversion from v8 to v7 APIs, as shown in the example below:</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In v8, you have to add the <a href="https://www.nuget.org/packages/Polly.RateLimiting"><code>Polly.RateLimiting</code></a> package to your application otherwise you won't see the <code>AddRateLimiter</code> extension.</p>
+</div>
+<!-- snippet: migration-interoperability -->
+<pre><code class="lang-cs">// First, create a resilience pipeline.
+ResiliencePipeline pipeline = new ResiliencePipelineBuilder()
+    .AddRateLimiter(new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromSeconds(10),
+        PermitLimit = 100
+    }))
+    .Build();
+
+// Now, convert it to a v7 policy. Note that it can be converted to both sync and async policies.
+ISyncPolicy syncPolicy = pipeline.AsSyncPolicy();
+IAsyncPolicy asyncPolicy = pipeline.AsAsyncPolicy();
+
+// Finally, use it in a policy wrap.
+ISyncPolicy wrappedPolicy = Policy.Wrap(
+    syncPolicy,
+    Policy.Handle&lt;SomeExceptionType&gt;().Retry(3));
+</code></pre>
+<!-- endSnippet -->
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/martincostello/polly-release-testing/blob/main/docs/migration-v8.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

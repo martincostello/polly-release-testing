@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+      <title>Fallback resilience strategy | Polly </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Fallback resilience strategy | Polly ">
+      
+      
+      <link rel="icon" href="../icon.png">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/martincostello/polly-release-testing/blob/main/docs/strategies/fallback.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+  </head>
+
+  <script type="module" src="./../public/docfx.min.js"></script>
+
+  <script>
+    const theme = localStorage.getItem('theme') || 'auto'
+    document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+  </script>
+
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../icon.png" alt="Polly">
+            Polly
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled="" placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" style="margin-top: -.65em; margin-left: -.8em" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="fallback-resilience-strategy">Fallback resilience strategy</h1>
+
+<h2 id="about">About</h2>
+<ul>
+<li><strong>Option(s)</strong>:
+<ul>
+<li><a class="xref" href="../api/Polly.Fallback.FallbackStrategyOptions-1.html"><code>FallbackStrategyOptions&lt;T&gt;</code></a></li>
+</ul>
+</li>
+<li><strong>Extension(s)</strong>:
+<ul>
+<li><code>AddFallback</code></li>
+</ul>
+</li>
+<li><strong>Exception(s)</strong>: -</li>
+</ul>
+<hr>
+<p>The fallback <strong>reactive</strong> resilience strategy provides a substitute if the execution of the callback fails. Failure can be either an <code>Exception</code> or a result object indicating unsuccessful processing. Typically this strategy is used as a last resort, meaning that if all other strategies failed to overcome the transient failure you could still provide a fallback value to the caller.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>In this document the <em>fallback</em>, <em>substitute</em>, and <em>surrogate</em> terms are used interchangeably.</p>
+</div>
+<h2 id="usage">Usage</h2>
+<!-- snippet: fallback -->
+<pre><code class="lang-cs">// A fallback/substitute value if an operation fails.
+var optionsSubstitute = new FallbackStrategyOptions&lt;UserAvatar&gt;
+{
+    ShouldHandle = new PredicateBuilder&lt;UserAvatar&gt;()
+        .Handle&lt;SomeExceptionType&gt;()
+        .HandleResult(r =&gt; r is null),
+    FallbackAction = static args =&gt; Outcome.FromResultAsValueTask(UserAvatar.Blank)
+};
+
+// Use a dynamically generated value if an operation fails.
+var optionsFallbackAction = new FallbackStrategyOptions&lt;UserAvatar&gt;
+{
+    ShouldHandle = new PredicateBuilder&lt;UserAvatar&gt;()
+        .Handle&lt;SomeExceptionType&gt;()
+        .HandleResult(r =&gt; r is null),
+    FallbackAction = static args =&gt;
+    {
+        var avatar = UserAvatar.GetRandomAvatar();
+        return Outcome.FromResultAsValueTask(avatar);
+    }
+};
+
+// Use a default or dynamically generated value, and execute an additional action if the fallback is triggered.
+var optionsOnFallback = new FallbackStrategyOptions&lt;UserAvatar&gt;
+{
+    ShouldHandle = new PredicateBuilder&lt;UserAvatar&gt;()
+        .Handle&lt;SomeExceptionType&gt;()
+        .HandleResult(r =&gt; r is null),
+    FallbackAction = static args =&gt;
+    {
+        var avatar = UserAvatar.GetRandomAvatar();
+        return Outcome.FromResultAsValueTask(UserAvatar.Blank);
+    },
+    OnFallback = static args =&gt;
+    {
+        // Add extra logic to be executed when the fallback is triggered, such as logging.
+        return default; // Returns an empty ValueTask
+    }
+};
+
+// Add a fallback strategy with a FallbackStrategyOptions&lt;TResult&gt; instance to the pipeline
+new ResiliencePipelineBuilder&lt;UserAvatar&gt;().AddFallback(optionsOnFallback);
+</code></pre>
+<!-- endSnippet -->
+<h2 id="defaults">Defaults</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Default Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ShouldHandle</code></td>
+<td>Any exceptions other than <code>OperationCanceledException</code>.</td>
+<td>Defines a predicate to determine what results and/or exceptions are handled by the fallback strategy.</td>
+</tr>
+<tr>
+<td><code>FallbackAction</code></td>
+<td><code>Null</code>, <strong>Required</strong></td>
+<td>This delegate allows you to <strong>dynamically</strong> calculate the surrogate value by utilizing information that is only available at runtime (like the outcome).</td>
+</tr>
+<tr>
+<td><code>OnFallback</code></td>
+<td><code>null</code></td>
+<td>If provided then it will be invoked before the strategy calculates the fallback value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="telemetry">Telemetry</h2>
+<p>The fallback strategy reports the following telemetry events:</p>
+<table>
+<thead>
+<tr>
+<th>Event Name</th>
+<th>Event Severity</th>
+<th>When?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OnFallback</code></td>
+<td><code>Warning</code></td>
+<td>Just before the strategy calls the <code>OnFallback</code> delegate</td>
+</tr>
+</tbody>
+</table>
+<p>Here are some sample events:</p>
+<pre><code class="lang-none">Resilience event occurred. EventName: 'OnFallback', Source: 'MyPipeline/MyPipelineInstance/MyFallbackStrategy', Operation Key: 'MyFallbackGuardedOperation', Result: '-1'
+
+Resilience event occurred. EventName: 'OnFallback', Source: '(null)/(null)/Fallback', Operation Key: '', Result: 'Exception of type 'CustomException' was thrown.'
+    CustomException: Exception of type 'CustomException' was thrown.
+        at Program.&lt;&gt;c.&lt;Main&gt;b__0_3(ResilienceContext ctx)
+        ...
+        at Polly.ResiliencePipeline.&lt;&gt;c__8`1.&lt;&lt;ExecuteAsync&gt;b__8_0&gt;d.MoveNext() in /_/src/Polly.Core/ResiliencePipeline.AsyncT.cs:line 95
+</code></pre>
+<div class="NOTE">
+<h5>Note</h5>
+<p>Please note that the <code>OnFallback</code> telemetry event will be reported <strong>only if</strong> the fallback strategy provides a surrogate value.</p>
+<p>So, if the callback either returns an acceptable result or throws an unhandled exception then there will be no telemetry emitted.</p>
+<p>Also remember that the <code>Result</code> will be <strong>always populated</strong> for the <code>OnFallback</code> telemetry event.</p>
+</div>
+<p>For further information please check out the <a href="https://www.pollydocs.org/advanced/telemetry">telemetry page</a>.</p>
+<h2 id="diagrams">Diagrams</h2>
+<h3 id="happy-path-sequence-diagram">Happy path sequence diagram</h3>
+<pre><code class="lang-mermaid">sequenceDiagram
+    actor C as Caller
+    participant P as Pipeline
+    participant F as Fallback
+    participant D as DecoratedUserCallback
+
+    C-&gt;&gt;P: Calls ExecuteAsync
+    P-&gt;&gt;F: Calls ExecuteCore
+    F-&gt;&gt;+D: Invokes
+    D-&gt;&gt;-F: Returns result
+    F-&gt;&gt;P: Returns result
+    P-&gt;&gt;C: Returns result
+</code></pre>
+<h3 id="unhappy-path-sequence-diagram">Unhappy path sequence diagram</h3>
+<pre><code class="lang-mermaid">sequenceDiagram
+    actor C as Caller
+    participant P as Pipeline
+    participant F as Fallback
+    participant FA as FallbackAction
+    participant D as DecoratedUserCallback
+
+    C-&gt;&gt;P: Calls ExecuteAsync
+    P-&gt;&gt;F: Calls ExecuteCore
+    F-&gt;&gt;+D: Invokes
+    D-&gt;&gt;-F: Fails
+    F-&gt;&gt;+FA: Invokes
+    FA--&gt;&gt;FA: Calculates substitute result
+    FA-&gt;&gt;-F: Returns &lt;br/&gt;substituted result
+    F-&gt;&gt;P: Returns &lt;br/&gt;substituted result
+    P-&gt;&gt;C: Returns &lt;br/&gt;substituted result
+</code></pre>
+<h2 id="patterns">Patterns</h2>
+<h3 id="fallback-after-retries">Fallback after retries</h3>
+<p>When designing resilient systems, a common pattern is to use a fallback after multiple failed retry attempts. This approach is especially relevant when a fallback strategy can provide a sensible default value.</p>
+<!-- snippet: fallback-pattern-after-retries -->
+<pre><code class="lang-cs">// Define a common predicates re-used by both fallback and retries
+var predicateBuilder = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+    .Handle&lt;HttpRequestException&gt;()
+    .HandleResult(r =&gt; r.StatusCode == HttpStatusCode.InternalServerError);
+
+var pipeline = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddFallback(new()
+    {
+        ShouldHandle = predicateBuilder,
+        FallbackAction = args =&gt;
+        {
+            // Try to resolve the fallback response
+            HttpResponseMessage fallbackResponse = ResolveFallbackResponse(args.Outcome);
+
+            return Outcome.FromResultAsValueTask(fallbackResponse);
+        }
+    })
+    .AddRetry(new()
+    {
+        ShouldHandle = predicateBuilder,
+        MaxRetryAttempts = 3,
+    })
+    .Build();
+
+// Demonstrative execution that always produces invalid result
+pipeline.Execute(() =&gt; new HttpResponseMessage(HttpStatusCode.InternalServerError));
+</code></pre>
+<!-- endSnippet -->
+<p>Here's a breakdown of the behavior when the callback produces either an <code>HttpStatusCode.InternalServerError</code> or an <code>HttpRequestException</code>:</p>
+<ul>
+<li>The fallback strategy initiates by executing the provided callback, then immediately passes the execution to the retry strategy.</li>
+<li>The retry strategy starts execution, makes 3 retry attempts and yields the outcome that represents an error.</li>
+<li>The fallback strategy resumes execution, assesses the outcome generated by the callback, and if necessary, supplies the fallback value.</li>
+<li>The fallback strategy completes its execution.</li>
+</ul>
+<div class="NOTE">
+<h5>Note</h5>
+<p>The preceding example also demonstrates how to re-use <code>ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;</code> across multiple strategies.</p>
+</div>
+<h2 id="anti-patterns">Anti-patterns</h2>
+<p>Over the years, many developers have used Polly in various ways. Some of these
+recurring patterns may not be ideal. The sections below highlight anti-patterns to avoid.</p>
+<h3 id="using-fallback-to-replace-thrown-exception">Using fallback to replace thrown exception</h3>
+<p>❌ DON'T</p>
+<p>Throw custom exceptions from the <code>OnFallback</code> delegate:</p>
+<!-- snippet: fallback-anti-pattern-replace-exception -->
+<pre><code class="lang-cs">var fallback = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddFallback(new()
+    {
+        ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;().Handle&lt;HttpRequestException&gt;(),
+        FallbackAction = args =&gt; Outcome.FromResultAsValueTask(new HttpResponseMessage()),
+        OnFallback = args =&gt; throw new CustomNetworkException(&quot;Replace thrown exception&quot;, args.Outcome.Exception!)
+    })
+    .Build();
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<p>Throwing an exception from a user-defined delegate can disrupt the normal control flow.</p>
+<p>✅ DO</p>
+<p>Use <code>ExecuteOutcomeAsync</code> and then evaluate the <code>Exception</code>:</p>
+<!-- snippet: fallback-pattern-replace-exception -->
+<pre><code class="lang-cs">var outcome = await WhateverPipeline.ExecuteOutcomeAsync(Action, context, &quot;state&quot;);
+if (outcome.Exception is HttpRequestException requestException)
+{
+    throw new CustomNetworkException(&quot;Replace thrown exception&quot;, requestException);
+}
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<p>This method lets you execute the strategy or pipeline smoothly, without unexpected interruptions. If you repeatedly find yourself writing this exception &quot;remapping&quot; logic, consider marking the method you wish to decorate as <code>private</code> and expose the &quot;remapping&quot; logic publicly.</p>
+<!-- snippet: fallback-pattern-replace-exception-ext -->
+<pre><code class="lang-cs">public static async ValueTask&lt;HttpResponseMessage&gt; Action()
+{
+    var context = ResilienceContextPool.Shared.Get();
+    var outcome = await WhateverPipeline.ExecuteOutcomeAsync&lt;HttpResponseMessage, string&gt;(
+        async (ctx, state) =&gt;
+        {
+            var result = await ActionCore();
+            return Outcome.FromResult(result);
+        }, context, &quot;state&quot;);
+
+    if (outcome.Exception is HttpRequestException requestException)
+    {
+        throw new CustomNetworkException(&quot;Replace thrown exception&quot;, requestException);
+    }
+
+    ResilienceContextPool.Shared.Return(context);
+    return outcome.Result!;
+}
+
+private static ValueTask&lt;HttpResponseMessage&gt; ActionCore()
+{
+    // The core logic
+    return ValueTask.FromResult(new HttpResponseMessage());
+}
+</code></pre>
+<!-- endSnippet -->
+<h3 id="using-retry-for-fallback">Using retry for fallback</h3>
+<p>Suppose you have a primary and a secondary endpoint. If the primary fails, you want to call the secondary.</p>
+<p>❌ DON'T</p>
+<p>Use retry for fallback:</p>
+<!-- snippet: fallback-anti-pattern-retry-for-fallback -->
+<pre><code class="lang-cs">var fallback = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddRetry(new()
+    {
+        ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+            .HandleResult(res =&gt; res.StatusCode == HttpStatusCode.RequestTimeout),
+        MaxRetryAttempts = 1,
+        OnRetry = async args =&gt;
+        {
+            args.Context.Properties.Set(fallbackKey, await CallSecondary(args.Context.CancellationToken));
+        }
+    })
+    .Build();
+
+var context = ResilienceContextPool.Shared.Get();
+var outcome = await fallback.ExecuteOutcomeAsync&lt;HttpResponseMessage, string&gt;(
+    async (ctx, state) =&gt;
+    {
+        var result = await CallPrimary(ctx.CancellationToken);
+        return Outcome.FromResult(result);
+    }, context, &quot;none&quot;);
+
+var result = outcome.Result is not null
+    ? outcome.Result
+    : context.Properties.GetValue(fallbackKey, default);
+
+ResilienceContextPool.Shared.Return(context);
+
+return result;
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<p>A retry strategy by default executes the same operation up to <code>N</code> times, where <code>N</code> equals the initial attempt plus <code>MaxRetryAttempts</code>. In this case, that means <strong>2</strong> times. Here, the fallback is introduced as a side effect rather than a replacement.</p>
+<p>✅ DO</p>
+<p>Use fallback to call the secondary:</p>
+<!-- snippet: fallback-pattern-retry-for-fallback -->
+<pre><code class="lang-cs">var fallback = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddFallback(new()
+    {
+        ShouldHandle = new PredicateBuilder&lt;HttpResponseMessage&gt;()
+            .HandleResult(res =&gt; res.StatusCode == HttpStatusCode.RequestTimeout),
+        FallbackAction = async args =&gt; Outcome.FromResult(await CallSecondary(args.Context.CancellationToken))
+    })
+    .Build();
+
+return await fallback.ExecuteAsync(CallPrimary, CancellationToken.None);
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<ul>
+<li>The target code is executed only once.</li>
+<li>The fallback value is returned directly, eliminating the need for additional code like <code>Context</code> or <code>ExecuteOutcomeAsync()</code>.</li>
+</ul>
+<h3 id="nesting-executeasync-calls">Nesting <code>ExecuteAsync</code> calls</h3>
+<p>Combining multiple strategies can be achieved in various ways. However, deeply nesting <code>ExecuteAsync</code> calls can lead to what's commonly referred to as <em><code>Execute</code> Hell</em>.</p>
+<div class="NOTE">
+<h5>Note</h5>
+<p>While this isn't strictly tied to the Fallback mechanism, it's frequently observed when Fallback is the outermost layer.</p>
+</div>
+<p>❌ DON'T</p>
+<p>Nest <code>ExecuteAsync</code> calls:</p>
+<!-- snippet: fallback-anti-pattern-nesting-execute -->
+<pre><code class="lang-cs">var result = await fallback.ExecuteAsync(async (CancellationToken outerCT) =&gt;
+{
+    return await timeout.ExecuteAsync(static async (CancellationToken innerCT) =&gt;
+    {
+        return await CallExternalSystem(innerCT);
+    }, outerCT);
+}, CancellationToken.None);
+
+return result;
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<p>This is akin to JavaScript's <a href="http://callbackhell.com/">callback hell</a> or <em><a href="https://en.wikipedia.org/wiki/Pyramid_of_doom_(programming)">the pyramid of doom</a></em>. It's easy to mistakenly reference the wrong <code>CancellationToken</code> parameter.</p>
+<p>✅ DO</p>
+<p>Use <code>ResiliencePipelineBuilder</code> to chain strategies:</p>
+<!-- snippet: fallback-pattern-nesting-execute -->
+<pre><code class="lang-cs">var pipeline = new ResiliencePipelineBuilder&lt;HttpResponseMessage&gt;()
+    .AddPipeline(timeout)
+    .AddPipeline(fallback)
+    .Build();
+
+return await pipeline.ExecuteAsync(CallExternalSystem, CancellationToken.None);
+</code></pre>
+<!-- endSnippet -->
+<p><strong>Reasoning</strong>:</p>
+<p>In this approach, we leverage the escalation mechanism provided by Polly rather than creating our own through nesting. <code>CancellationToken</code> values are automatically propagated between the strategies for you.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/martincostello/polly-release-testing/blob/main/docs/strategies/fallback.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          <span>Made with <a href="https://dotnet.github.io/docfx">docfx</a></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
