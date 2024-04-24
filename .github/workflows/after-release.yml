@@ -4,7 +4,9 @@ on:
   release:
     types: [ published ]
 
-permissions: {}
+permissions:
+  contents: write
+  pull-requests: write
 
 env:
   RELEASE_DATE: ${{ github.event.release.published_at }}
@@ -24,18 +26,8 @@ jobs:
 
     steps:
 
-      - name: Generate GitHub application token
-        id: generate-application-token
-        uses: peter-murray/workflow-application-token-action@dc0413987a085fa17d19df9e47d4677cf81ffef3 # v3.0.0
-        with:
-          application_id: ${{ secrets.POLLY_UPDATER_BOT_APP_ID }}
-          application_private_key: ${{ secrets.POLLY_UPDATER_BOT_KEY }}
-          permissions: 'contents:write, pull_requests:write'
-
       - name: Checkout code
         uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
-        with:
-          token: ${{ steps.generate-application-token.outputs.token }}
 
       - name: Update Polly version
         shell: pwsh
@@ -92,7 +84,6 @@ jobs:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
           HEAD_BRANCH: ${{ steps.push-changes.outputs.branch-name }}
         with:
-          github-token: ${{ steps.generate-application-token.outputs.token }}
           script: |
             const version = process.env.RELEASE_VERSION;
             const { repo, owner } = context.repo;
