@@ -37,7 +37,7 @@ jobs:
             const { repo, owner } = context.repo;
             const draft = true;
             const version = process.env.VERSION;
-            const tag_name = `v${version}`;
+            const tag_name = version;
             const name = tag_name;
 
             const { data: notes } = await github.rest.repos.generateReleaseNotes({
